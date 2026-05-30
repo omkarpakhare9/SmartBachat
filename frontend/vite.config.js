@@ -6,6 +6,7 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   root: projectRoot,
+  base: '/SmartBachat/',
   plugins: [react()],
   build: {
     outDir: 'dist',
