@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget Alert</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e74c3c;
+    }
+    .header h1 {
+      color: #e74c3c;
+      margin: 0;
+    }
+    .alert-box {
+      background: #fee;
+      border-left: 4px solid #e74c3c;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .alert-box strong {
+      color: #e74c3c;
+    }
+    .details {
+      background: #fff;
+      padding: 20px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .details table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .details td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .details td:first-child {
+      font-weight: bold;
+      color: #666;
+    }
+    .progress-bar {
+      background: #e0e0e0;
+      border-radius: 10px;
+      height: 20px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      background: #e74c3c;
+      height: 100%;
+      border-radius: 10px;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      color: #666;
+      font-size: 12px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚠️ Budget Alert</h1>
+    </div>
+    
+    <div class="alert-box">
+      <strong>You've exceeded your budget!</strong>
+    </div>
+    
+    <p>Hello {{userName}},</p>
+    
+    <p>This is a notification that you have exceeded your budget for <strong>{{categoryName}}</strong>.</p>
+    
+    <div class="details">
+      <table>
+        <tr>
+          <td>Budget Limit:</td>
+          <td>{{budgetLimit}}</td>
+        </tr>
+        <tr>
+          <td>Amount Spent:</td>
+          <td>{{amountSpent}}</td>
+        </tr>
+        <tr>
+          <td>Over Budget By:</td>
+          <td style="color: #e74c3c; font-weight: bold;">{{overBudgetAmount}}</td>
+        </tr>
+      </table>
+      
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: {{percentageUsed}}%"></div>
+      </div>
+      <p style="text-align: center; font-size: 14px; color: #666;">{{percentageUsed}}% of budget used</p>
+    </div>
+    
+    <p>We recommend reviewing your spending habits and adjusting your budget if needed.</p>
+    
+    <div style="text-align: center;">
+      <a href="{{appUrl}}" class="button">View Your Budget</a>
+    </div>
+    
+    <div class="footer">
+      <p>This is an automated message from Expense Tracker. You can manage your notification preferences in your account settings.</p>
+    </div>
+  </div>
+</body>
+</html>

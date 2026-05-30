@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Split Expense Reminder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #3498db;
+    }
+    .header h1 {
+      color: #3498db;
+      margin: 0;
+    }
+    .reminder-box {
+      background: #e8f4fd;
+      border-left: 4px solid #3498db;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .reminder-box strong {
+      color: #3498db;
+    }
+    .details {
+      background: #fff;
+      padding: 20px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .details table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .details td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .details td:first-child {
+      font-weight: bold;
+      color: #666;
+    }
+    .participants {
+      background: #fff;
+      padding: 20px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .participants h3 {
+      margin-top: 0;
+      color: #3498db;
+    }
+    .participant-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .participant-item:last-child {
+      border-bottom: none;
+    }
+    .status-paid {
+      color: #27ae60;
+      font-weight: bold;
+    }
+    .status-pending {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      color: #666;
+      font-size: 12px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💰 Split Expense Reminder</h1>
+    </div>
+    
+    <div class="reminder-box">
+      <strong>You have a pending split expense!</strong>
+    </div>
+    
+    <p>Hello {{userName}},</p>
+    
+    <p>This is a reminder that you have an outstanding payment for a split expense.</p>
+    
+    <div class="details">
+      <table>
+        <tr>
+          <td>Expense:</td>
+          <td>{{expenseName}}</td>
+        </tr>
+        <tr>
+          <td>Total Amount:</td>
+          <td>{{totalAmount}}</td>
+        </tr>
+        <tr>
+          <td>Your Share:</td>
+          <td style="color: #3498db; font-weight: bold;">{{yourShare}}</td>
+        </tr>
+        <tr>
+          <td>Split Type:</td>
+          <td>{{splitType}}</td>
+        </tr>
+        <tr>
+          <td>Created By:</td>
+          <td>{{createdBy}}</td>
+        </tr>
+      </table>
+    </div>
+    
+    <div class="participants">
+      <h3>Participants Status</h3>
+      {{participantsList}}
+    </div>
+    
+    <p>Please settle your payment as soon as possible.</p>
+    
+    <div style="text-align: center;">
+      <a href="{{appUrl}}" class="button">View Split Details</a>
+    </div>
+    
+    <div class="footer">
+      <p>This is an automated message from Expense Tracker. You can manage your notification preferences in your account settings.</p>
+    </div>
+  </div>
+</body>
+</html>
