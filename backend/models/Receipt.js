@@ -1,110 +1,60 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 
 class Receipt {
-  static create({ transaction_id, user_id, file_url, file_name, file_size, file_type, storage_type = 'local' }) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async create({ transaction_id, user_id, file_url, file_name, file_size, file_type, storage_type = 'local' }) {
+    const pool = getPool();
+    const result = await pool.query(`
       INSERT INTO receipts (transaction_id, user_id, file_url, file_name, file_size, file_type, storage_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.bind([transaction_id, user_id, file_url, file_name, file_size, file_type, storage_type]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id
+    `, [transaction_id, user_id, file_url, file_name, file_size, file_type, storage_type]);
 
-    // Get the newly created receipt
-    const queryStmt = db.prepare(`
-      SELECT id FROM receipts
-      WHERE transaction_id = ? AND user_id = ?
-      ORDER BY id DESC LIMIT 1
-    `);
-    queryStmt.bind([transaction_id, user_id]);
-
-    let receiptId = null;
-    if (queryStmt.step()) {
-      const row = queryStmt.getAsObject();
-      receiptId = row.id;
-    }
-    queryStmt.free();
-
-    return receiptId ? this.findById(receiptId) : null;
+    return this.findById(result.rows[0].id);
   }
 
-  static findById(id) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      SELECT * FROM receipts WHERE id = ?
-    `);
-    stmt.bind([id]);
+  static async findById(id) {
+    const pool = getPool();
+    const result = await pool.query(`SELECT * FROM receipts WHERE id = $1`, [id]);
 
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
-  static findByTransaction(transaction_id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findByTransaction(transaction_id) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT * FROM receipts
-      WHERE transaction_id = ?
+      WHERE transaction_id = $1
       ORDER BY uploaded_at DESC
-    `);
-    stmt.bind([transaction_id]);
+    `, [transaction_id]);
 
-    const receipts = [];
-    while (stmt.step()) {
-      receipts.push(stmt.getAsObject());
-    }
-    stmt.free();
-
-    return receipts;
+    return result.rows;
   }
 
-  static findByUser(user_id, limit = 50) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findByUser(user_id, limit = 50) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT r.*, t.description, t.amount, t.date
       FROM receipts r
       JOIN transactions t ON r.transaction_id = t.id
-      WHERE r.user_id = ?
+      WHERE r.user_id = $1
       ORDER BY r.uploaded_at DESC
-      LIMIT ?
-    `);
-    stmt.bind([user_id, limit]);
+      LIMIT $2
+    `, [user_id, limit]);
 
-    const receipts = [];
-    while (stmt.step()) {
-      receipts.push(stmt.getAsObject());
-    }
-    stmt.free();
-
-    return receipts;
+    return result.rows;
   }
 
-  static delete(id) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      DELETE FROM receipts WHERE id = ?
-    `);
-    stmt.bind([id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async delete(id) {
+    const pool = getPool();
+    await pool.query(`DELETE FROM receipts WHERE id = $1`, [id]);
   }
 
-  static deleteByTransaction(transaction_id) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      DELETE FROM receipts WHERE transaction_id = ?
-    `);
-    stmt.bind([transaction_id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async deleteByTransaction(transaction_id) {
+    const pool = getPool();
+    await pool.query(`DELETE FROM receipts WHERE transaction_id = $1`, [transaction_id]);
   }
 }
 

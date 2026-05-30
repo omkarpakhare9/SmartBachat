@@ -1,136 +1,95 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 const Currency = require('./Currency');
 const User = require('./User');
 
 class Budget {
-  static create({ user_id, category_id, amount, period = 'monthly', alert_threshold = 80, alert_enabled = 1 }) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async create({ user_id, category_id, amount, period = 'monthly', alert_threshold = 80, alert_enabled = 1 }) {
+    const pool = getPool();
+    const result = await pool.query(`
       INSERT INTO budgets (user_id, category_id, amount, period, alert_threshold, alert_enabled)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    stmt.bind([user_id, category_id, amount, period, alert_threshold, alert_enabled]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
+    `, [user_id, category_id, amount, period, alert_threshold, alert_enabled]);
 
-    // Get the newly created budget
-    const queryStmt = db.prepare(`
-      SELECT id FROM budgets
-      WHERE user_id = ? AND category_id = ? AND period = ?
-      ORDER BY id DESC LIMIT 1
-    `);
-    queryStmt.bind([user_id, category_id, period]);
-
-    let budgetId = null;
-    if (queryStmt.step()) {
-      const row = queryStmt.getAsObject();
-      budgetId = row.id;
-    }
-    queryStmt.free();
-
-    return budgetId ? this.findById(budgetId) : null;
+    return this.findById(result.rows[0].id);
   }
 
-  static findById(id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findById(id) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT b.*, c.name as category_name, c.color, c.icon
       FROM budgets b
       LEFT JOIN categories c ON b.category_id = c.id
-      WHERE b.id = ?
-    `);
-    stmt.bind([id]);
+      WHERE b.id = $1
+    `, [id]);
 
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return this.enrichBudget(result);
+    if (result.rows.length > 0) {
+      return this.enrichBudget(result.rows[0]);
     }
-    stmt.free();
     return null;
   }
 
-  static findByUserAndCategory(user_id, category_id, period = 'monthly') {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findByUserAndCategory(user_id, category_id, period = 'monthly') {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT b.*, c.name as category_name, c.color, c.icon
       FROM budgets b
       LEFT JOIN categories c ON b.category_id = c.id
-      WHERE b.user_id = ? AND b.category_id = ? AND b.period = ?
-    `);
-    stmt.bind([user_id, category_id, period]);
+      WHERE b.user_id = $1 AND b.category_id = $2 AND b.period = $3
+    `, [user_id, category_id, period]);
 
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return this.enrichBudget(result);
+    if (result.rows.length > 0) {
+      return this.enrichBudget(result.rows[0]);
     }
-    stmt.free();
     return null;
   }
 
-  static findByUser(user_id, period = null) {
-    const db = getDb();
+  static async findByUser(user_id, period = null) {
+    const pool = getPool();
     let query = `
       SELECT b.*, c.name as category_name, c.color, c.icon
       FROM budgets b
       LEFT JOIN categories c ON b.category_id = c.id
-      WHERE b.user_id = ?
+      WHERE b.user_id = $1
     `;
     
     if (period) {
-      query += ` AND b.period = ?`;
+      query += ` AND b.period = $2`;
     }
     
     query += ` ORDER BY b.period, b.created_at DESC`;
 
-    const stmt = db.prepare(query);
-    if (period) {
-      stmt.bind([user_id, period]);
-    } else {
-      stmt.bind([user_id]);
-    }
+    const params = period ? [user_id, period] : [user_id];
+    const result = await pool.query(query, params);
 
     const budgets = [];
-    while (stmt.step()) {
-      budgets.push(this.enrichBudget(stmt.getAsObject()));
+    for (const row of result.rows) {
+      budgets.push(await this.enrichBudget(row));
     }
-    stmt.free();
 
     return budgets;
   }
 
-  static update(id, { amount, alert_threshold, alert_enabled }) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async update(id, { amount, alert_threshold, alert_enabled }) {
+    const pool = getPool();
+    await pool.query(`
       UPDATE budgets 
-      SET amount = COALESCE(?, amount),
-          alert_threshold = COALESCE(?, alert_threshold),
-          alert_enabled = COALESCE(?, alert_enabled),
+      SET amount = COALESCE($1, amount),
+          alert_threshold = COALESCE($2, alert_threshold),
+          alert_enabled = COALESCE($3, alert_enabled),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    stmt.bind([amount || null, alert_threshold || null, alert_enabled !== undefined ? alert_enabled : null, id]);
-    stmt.step();
-    stmt.free();
-    save();
+      WHERE id = $4
+    `, [amount, alert_threshold, alert_enabled, id]);
 
     return this.findById(id);
   }
 
-  static delete(id) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      DELETE FROM budgets WHERE id = ?
-    `);
-    stmt.bind([id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async delete(id) {
+    const pool = getPool();
+    await pool.query(`DELETE FROM budgets WHERE id = $1`, [id]);
   }
 
-  static enrichBudget(budget) {
+  static async enrichBudget(budget) {
     if (!budget) return null;
 
     // Calculate spent amount for this period
@@ -156,33 +115,26 @@ class Budget {
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    const db = getDb();
-    const transactionStmt = db.prepare(`
+    const pool = getPool();
+    const transactionResult = await pool.query(`
       SELECT COALESCE(SUM(amount), 0) as spent
       FROM transactions
-      WHERE user_id = ? AND category_id = ? AND type = 'expense'
-        AND date >= ? AND date <= ?
-    `);
-    transactionStmt.bind([
+      WHERE user_id = $1 AND category_id = $2 AND type = 'expense'
+        AND date >= $3 AND date <= $4
+    `, [
       budget.user_id,
       budget.category_id,
       startDate.toISOString(),
       endDate.toISOString()
     ]);
 
-    let spent = 0;
-    if (transactionStmt.step()) {
-      const row = transactionStmt.getAsObject();
-      spent = row.spent || 0;
-    }
-    transactionStmt.free();
-
+    const spent = transactionResult.rows[0].spent || 0;
     const percentage = (spent / budget.amount) * 100;
     const remaining = Math.max(0, budget.amount - spent);
-    const user = User.findById(budget.user_id);
-    const amountDisplay = Currency.withDisplayAmount(budget.amount, user?.preferredCurrency);
-    const spentDisplay = Currency.withDisplayAmount(spent, user?.preferredCurrency);
-    const remainingDisplay = Currency.withDisplayAmount(remaining, user?.preferredCurrency);
+    const user = await User.findById(budget.user_id);
+    const amountDisplay = await Currency.withDisplayAmount(budget.amount, user?.preferredCurrency);
+    const spentDisplay = await Currency.withDisplayAmount(spent, user?.preferredCurrency);
+    const remainingDisplay = await Currency.withDisplayAmount(remaining, user?.preferredCurrency);
 
     return {
       ...budget,
@@ -201,51 +153,36 @@ class Budget {
     };
   }
 
-  static createAlert(budget_id, spent_amount, percentage) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async createAlert(budget_id, spent_amount, percentage) {
+    const pool = getPool();
+    await pool.query(`
       INSERT INTO budget_alerts (budget_id, spent_amount, percentage)
-      VALUES (?, ?, ?)
-    `);
-    stmt.bind([budget_id, spent_amount, percentage]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3)
+    `, [budget_id, spent_amount, percentage]);
   }
 
-  static getUnreadAlerts(user_id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async getUnreadAlerts(user_id) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT ba.*, b.*, c.name as category_name
       FROM budget_alerts ba
       JOIN budgets b ON ba.budget_id = b.id
       LEFT JOIN categories c ON b.category_id = c.id
-      WHERE b.user_id = ? AND ba.dismissed = 0
+      WHERE b.user_id = $1 AND ba.dismissed = 0
       ORDER BY ba.alert_date DESC
       LIMIT 10
-    `);
-    stmt.bind([user_id]);
+    `, [user_id]);
 
-    const alerts = [];
-    while (stmt.step()) {
-      alerts.push(stmt.getAsObject());
-    }
-    stmt.free();
-
-    return alerts;
+    return result.rows;
   }
 
-  static dismissAlert(alert_id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async dismissAlert(alert_id) {
+    const pool = getPool();
+    await pool.query(`
       UPDATE budget_alerts 
       SET dismissed = 1, dismissed_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    stmt.bind([alert_id]);
-    stmt.step();
-    stmt.free();
-    save();
+      WHERE id = $1
+    `, [alert_id]);
   }
 }
 

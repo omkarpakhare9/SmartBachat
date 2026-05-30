@@ -1,158 +1,110 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 const Transaction = require('./Transaction');
 
 class RecurringTransaction {
-  static create({ user_id, category_id, type, amount, description, frequency, start_date, end_date, day_of_week, day_of_month }) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async create({ user_id, category_id, type, amount, description, frequency, start_date, end_date, day_of_week, day_of_month }) {
+    const pool = getPool();
+    const result = await pool.query(`
       INSERT INTO recurring_transactions 
       (user_id, category_id, type, amount, description, frequency, start_date, end_date, day_of_week, day_of_month)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.bind([user_id, category_id, type, amount, description, frequency, start_date, end_date, day_of_week, day_of_month]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING id
+    `, [user_id, category_id, type, amount, description, frequency, start_date, end_date, day_of_week, day_of_month]);
 
-    // Get the newly created recurring transaction
-    const queryStmt = db.prepare(`
-      SELECT id FROM recurring_transactions
-      WHERE user_id = ? AND category_id = ? AND start_date = ?
-      ORDER BY id DESC LIMIT 1
-    `);
-    queryStmt.bind([user_id, category_id, start_date]);
-
-    let recurringId = null;
-    if (queryStmt.step()) {
-      const row = queryStmt.getAsObject();
-      recurringId = row.id;
-    }
-    queryStmt.free();
-
-    return recurringId ? this.findById(recurringId) : null;
+    return this.findById(result.rows[0].id);
   }
 
-  static findById(id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findById(id) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT rt.*, c.name as category_name, c.color, c.icon
       FROM recurring_transactions rt
       LEFT JOIN categories c ON rt.category_id = c.id
-      WHERE rt.id = ?
-    `);
-    stmt.bind([id]);
+      WHERE rt.id = $1
+    `, [id]);
 
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
-  static findByUser(user_id, isActive = null) {
-    const db = getDb();
+  static async findByUser(user_id, isActive = null) {
+    const pool = getPool();
     let query = `
       SELECT rt.*, c.name as category_name, c.color, c.icon
       FROM recurring_transactions rt
       LEFT JOIN categories c ON rt.category_id = c.id
-      WHERE rt.user_id = ?
+      WHERE rt.user_id = $1
     `;
 
     if (isActive !== null) {
-      query += ` AND rt.is_active = ?`;
+      query += ` AND rt.is_active = $2`;
     }
 
     query += ` ORDER BY rt.created_at DESC`;
 
-    const stmt = db.prepare(query);
-    if (isActive !== null) {
-      stmt.bind([user_id, isActive]);
-    } else {
-      stmt.bind([user_id]);
-    }
+    const params = isActive !== null ? [user_id, isActive] : [user_id];
+    const result = await pool.query(query, params);
 
-    const recurringTransactions = [];
-    while (stmt.step()) {
-      recurringTransactions.push(stmt.getAsObject());
-    }
-    stmt.free();
-
-    return recurringTransactions;
+    return result.rows;
   }
 
-  static update(id, { amount, description, end_date, is_active, day_of_week, day_of_month }) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async update(id, { amount, description, end_date, is_active, day_of_week, day_of_month }) {
+    const pool = getPool();
+    await pool.query(`
       UPDATE recurring_transactions
-      SET amount = COALESCE(?, amount),
-          description = COALESCE(?, description),
-          end_date = COALESCE(?, end_date),
-          is_active = COALESCE(?, is_active),
-          day_of_week = COALESCE(?, day_of_week),
-          day_of_month = COALESCE(?, day_of_month),
+      SET amount = COALESCE($1, amount),
+          description = COALESCE($2, description),
+          end_date = COALESCE($3, end_date),
+          is_active = COALESCE($4, is_active),
+          day_of_week = COALESCE($5, day_of_week),
+          day_of_month = COALESCE($6, day_of_month),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    stmt.bind([amount || null, description || null, end_date || null, is_active !== undefined ? is_active : null, day_of_week || null, day_of_month || null, id]);
-    stmt.step();
-    stmt.free();
-    save();
+      WHERE id = $7
+    `, [amount, description, end_date, is_active, day_of_week, day_of_month, id]);
 
     return this.findById(id);
   }
 
-  static delete(id) {
-    const db = getDb();
+  static async delete(id) {
+    const pool = getPool();
     
     // Delete recurring instances first
-    const deleteInstancesStmt = db.prepare(`
+    await pool.query(`
       DELETE FROM recurring_instances
-      WHERE recurring_transaction_id = ?
-    `);
-    deleteInstancesStmt.bind([id]);
-    deleteInstancesStmt.step();
-    deleteInstancesStmt.free();
+      WHERE recurring_transaction_id = $1
+    `, [id]);
 
     // Delete recurring transaction
-    const stmt = db.prepare(`
-      DELETE FROM recurring_transactions WHERE id = ?
-    `);
-    stmt.bind([id]);
-    stmt.step();
-    stmt.free();
-    save();
+    await pool.query(`DELETE FROM recurring_transactions WHERE id = $1`, [id]);
   }
 
-  static processRecurring() {
-    const db = getDb();
+  static async processRecurring() {
+    const pool = getPool();
     const today = new Date().toISOString().split('T')[0];
 
     // Get all active recurring transactions that should run today
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       SELECT rt.*, c.id as category_id
       FROM recurring_transactions rt
       LEFT JOIN categories c ON rt.category_id = c.id
       WHERE rt.is_active = 1
-        AND rt.start_date <= ?
-        AND (rt.end_date IS NULL OR rt.end_date >= ?)
-    `);
-    stmt.bind([today, today]);
+        AND rt.start_date <= $1
+        AND (rt.end_date IS NULL OR rt.end_date >= $2)
+    `, [today, today]);
 
     const toProcess = [];
-    while (stmt.step()) {
-      const row = stmt.getAsObject();
+    for (const row of result.rows) {
       if (this.shouldRunToday(row, today)) {
         toProcess.push(row);
       }
     }
-    stmt.free();
 
     // Create transactions for each
-    toProcess.forEach(recurring => {
-      this.createTransactionInstance(recurring, today);
-    });
+    for (const recurring of toProcess) {
+      await this.createTransactionInstance(recurring, today);
+    }
 
     return toProcess.length;
   }
@@ -188,10 +140,10 @@ class RecurringTransaction {
     }
   }
 
-  static createTransactionInstance(recurring, date) {
+  static async createTransactionInstance(recurring, date) {
     try {
       // Create transaction
-      const transaction = Transaction.create({
+      const transaction = await Transaction.create({
         user_id: recurring.user_id,
         type: recurring.type,
         category_id: recurring.category_id,
@@ -201,29 +153,20 @@ class RecurringTransaction {
       });
 
       if (transaction) {
+        const pool = getPool();
         // Record the instance
-        const db = getDb();
-        const stmt = db.prepare(`
+        await pool.query(`
           INSERT INTO recurring_instances 
           (recurring_transaction_id, transaction_id, scheduled_date)
-          VALUES (?, ?, ?)
-        `);
-        stmt.bind([recurring.id, transaction.id, date]);
-        stmt.step();
-        stmt.free();
+          VALUES ($1, $2, $3)
+        `, [recurring.id, transaction.id, date]);
 
         // Update last_created
-        const updateStmt = db.prepare(`
+        await pool.query(`
           UPDATE recurring_transactions
           SET last_created = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `);
-        updateStmt.bind([recurring.id]);
-        updateStmt.step();
-        updateStmt.free();
-
-        const { save } = require('../config/database');
-        save();
+          WHERE id = $1
+        `, [recurring.id]);
 
         return transaction;
       }
@@ -233,25 +176,18 @@ class RecurringTransaction {
     return null;
   }
 
-  static getInstances(recurring_id, limit = 12) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async getInstances(recurring_id, limit = 12) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT ri.*, t.amount, t.description, t.date, t.type
       FROM recurring_instances ri
       JOIN transactions t ON ri.transaction_id = t.id
-      WHERE ri.recurring_transaction_id = ?
+      WHERE ri.recurring_transaction_id = $1
       ORDER BY ri.scheduled_date DESC
-      LIMIT ?
-    `);
-    stmt.bind([recurring_id, limit]);
+      LIMIT $2
+    `, [recurring_id, limit]);
 
-    const instances = [];
-    while (stmt.step()) {
-      instances.push(stmt.getAsObject());
-    }
-    stmt.free();
-
-    return instances;
+    return result.rows;
   }
 }
 

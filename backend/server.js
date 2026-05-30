@@ -102,19 +102,19 @@ function initializeScheduler() {
     try {
       const cron = require('node-cron');
       // Run every day at 00:00 (midnight)
-      cron.schedule('0 0 * * *', () => {
+      cron.schedule('0 0 * * *', async () => {
         console.log('Running recurring transaction processor...');
-        const count = RecurringTransaction.processRecurring();
+        const count = await RecurringTransaction.processRecurring();
         console.log(`Processed ${count} recurring transactions`);
       });
       console.log('Recurring transaction scheduler initialized (using node-cron)');
     } catch (e) {
       // Fallback: use setInterval to run every 24 hours
-      setInterval(() => {
+      setInterval(async () => {
         const now = new Date();
         if (now.getHours() === 0 && now.getMinutes() === 0) {
           console.log('Running recurring transaction processor...');
-          const count = RecurringTransaction.processRecurring();
+          const count = await RecurringTransaction.processRecurring();
           console.log(`Processed ${count} recurring transactions`);
         }
       }, 60000); // Check every minute

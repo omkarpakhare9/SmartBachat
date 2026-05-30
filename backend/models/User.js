@@ -1,157 +1,119 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 const bcrypt = require('bcryptjs');
 
 class User {
-  static create({ name, email, password, preferredCurrency = 'INR' }) {
-    const db = getDb();
+  static async create({ name, email, password, preferredCurrency = 'INR' }) {
+    const pool = getPool();
     const hashedPassword = bcrypt.hashSync(password, 10);
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       INSERT INTO users (name, email, password, preferred_currency)
-      VALUES (?, ?, ?, ?)
-    `);
-    stmt.bind([name, email.toLowerCase(), hashedPassword, preferredCurrency]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, name, email, preferred_currency as "preferredCurrency", created_at as "createdAt"
+    `, [name, email.toLowerCase(), hashedPassword, preferredCurrency]);
     
-    // Get the newly created user by email
-    return this.findByEmail(email);
+    return result.rows[0];
   }
 
-  static findByEmail(email) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      SELECT id, name, email, password, preferred_currency as preferredCurrency, created_at as createdAt FROM users WHERE email = ?
-    `);
-    stmt.bind([email.toLowerCase()]);
+  static async findByEmail(email) {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT id, name, email, password, preferred_currency as "preferredCurrency", created_at as "createdAt" 
+      FROM users WHERE email = $1
+    `, [email.toLowerCase()]);
     
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
-  static findById(id) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      SELECT id, name, email, password, preferred_currency as preferredCurrency, created_at as createdAt FROM users WHERE id = ?
-    `);
-    stmt.bind([id]);
+  static async findById(id) {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT id, name, email, password, preferred_currency as "preferredCurrency", created_at as "createdAt" 
+      FROM users WHERE id = $1
+    `, [id]);
     
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
-  static updateName(id, name) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      UPDATE users SET name = ? WHERE id = ?
-    `);
-    stmt.bind([name, id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async updateName(id, name) {
+    const pool = getPool();
+    await pool.query(`
+      UPDATE users SET name = $1 WHERE id = $2
+    `, [name, id]);
     return this.findById(id);
   }
 
-  static updateEmail(id, email) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      UPDATE users SET email = ? WHERE id = ?
-    `);
-    stmt.bind([email.toLowerCase(), id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async updateEmail(id, email) {
+    const pool = getPool();
+    await pool.query(`
+      UPDATE users SET email = $1 WHERE id = $2
+    `, [email.toLowerCase(), id]);
     return this.findById(id);
   }
 
-  static updatePassword(id, newPassword) {
-    const db = getDb();
+  static async updatePassword(id, newPassword) {
+    const pool = getPool();
     const hashedPassword = bcrypt.hashSync(newPassword, 10);
-    const stmt = db.prepare(`
-      UPDATE users SET password = ? WHERE id = ?
-    `);
-    stmt.bind([hashedPassword, id]);
-    stmt.step();
-    stmt.free();
-    save();
+    await pool.query(`
+      UPDATE users SET password = $1 WHERE id = $2
+    `, [hashedPassword, id]);
   }
 
   static matchPassword(enteredPassword, hashedPassword) {
     return bcrypt.compareSync(enteredPassword, hashedPassword);
   }
 
-  static updateCurrency(id, currency) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      UPDATE users SET preferred_currency = ? WHERE id = ?
-    `);
-    stmt.bind([currency, id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async updateCurrency(id, currency) {
+    const pool = getPool();
+    await pool.query(`
+      UPDATE users SET preferred_currency = $1 WHERE id = $2
+    `, [currency, id]);
     return this.findById(id);
   }
 
-  static getNotificationSettings(userId) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      SELECT * FROM notification_settings WHERE user_id = ?
-    `);
-    stmt.bind([userId]);
+  static async getNotificationSettings(userId) {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT * FROM notification_settings WHERE user_id = $1
+    `, [userId]);
     
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
-  static createNotificationSettings(userId) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async createNotificationSettings(userId) {
+    const pool = getPool();
+    await pool.query(`
       INSERT INTO notification_settings (user_id)
-      VALUES (?)
-    `);
-    stmt.bind([userId]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1)
+    `, [userId]);
     return this.getNotificationSettings(userId);
   }
 
-  static updateNotificationSettings(userId, settings) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async updateNotificationSettings(userId, settings) {
+    const pool = getPool();
+    await pool.query(`
       UPDATE notification_settings 
-      SET email_budget_alerts = ?, 
-          email_split_reminders = ?, 
-          email_recurring_reminders = ?, 
-          email_receipts = ?,
+      SET email_budget_alerts = $1, 
+          email_split_reminders = $2, 
+          email_recurring_reminders = $3, 
+          email_receipts = $4,
           updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = ?
-    `);
-    stmt.bind([
+      WHERE user_id = $5
+    `, [
       settings.emailBudgetAlerts !== undefined ? settings.emailBudgetAlerts : 1,
       settings.emailSplitReminders !== undefined ? settings.emailSplitReminders : 1,
       settings.emailRecurringReminders !== undefined ? settings.emailRecurringReminders : 1,
       settings.emailReceipts !== undefined ? settings.emailReceipts : 1,
       userId
     ]);
-    stmt.step();
-    stmt.free();
-    save();
     return this.getNotificationSettings(userId);
   }
 }

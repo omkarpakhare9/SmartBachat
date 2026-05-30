@@ -1,4 +1,4 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 
 const DEFAULT_BASE_CURRENCY = process.env.BASE_CURRENCY || 'USD';
 const DEFAULT_API_BASE_URL = 'https://api.exchangerate-api.com/v4/latest';
@@ -8,76 +8,64 @@ class Currency {
     return String(code || DEFAULT_BASE_CURRENCY).trim().toUpperCase();
   }
 
-  static findAll() {
-    const db = getDb();
-    const stmt = db.prepare(`
-      SELECT code, name, symbol, exchange_rate_to_usd as exchangeRateToUsd,
-             exchange_rate_from_usd as exchangeRateFromUsd, last_updated as lastUpdated
+  static async findAll() {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT code, name, symbol, exchange_rate_to_usd as "exchangeRateToUsd",
+             exchange_rate_from_usd as "exchangeRateFromUsd", last_updated as "lastUpdated"
       FROM currencies
       ORDER BY code
     `);
 
-    const currencies = [];
-    while (stmt.step()) {
-      currencies.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return currencies;
+    return result.rows;
   }
 
-  static findByCode(code) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      SELECT code, name, symbol, exchange_rate_to_usd as exchangeRateToUsd,
-             exchange_rate_from_usd as exchangeRateFromUsd, last_updated as lastUpdated
+  static async findByCode(code) {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT code, name, symbol, exchange_rate_to_usd as "exchangeRateToUsd",
+             exchange_rate_from_usd as "exchangeRateFromUsd", last_updated as "lastUpdated"
       FROM currencies
-      WHERE code = ?
-    `);
-    stmt.bind([this.normalizeCode(code)]);
+      WHERE code = $1
+    `, [this.normalizeCode(code)]);
 
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
-  static upsert({ code, name, symbol, exchangeRateFromUsd, exchangeRateToUsd }) {
-    const db = getDb();
+  static async upsert({ code, name, symbol, exchangeRateFromUsd, exchangeRateToUsd }) {
+    const pool = getPool();
     const normalizedCode = this.normalizeCode(code);
     const fromUsd = Number(exchangeRateFromUsd);
     const toUsd = Number(exchangeRateToUsd || (fromUsd ? 1 / fromUsd : 1));
 
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       INSERT INTO currencies (code, name, symbol, exchange_rate_to_usd, exchange_rate_from_usd, last_updated)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
       ON CONFLICT(code) DO UPDATE SET
-        name = excluded.name,
-        symbol = excluded.symbol,
-        exchange_rate_to_usd = excluded.exchange_rate_to_usd,
-        exchange_rate_from_usd = excluded.exchange_rate_from_usd,
+        name = EXCLUDED.name,
+        symbol = EXCLUDED.symbol,
+        exchange_rate_to_usd = EXCLUDED.exchange_rate_to_usd,
+        exchange_rate_from_usd = EXCLUDED.exchange_rate_from_usd,
         last_updated = CURRENT_TIMESTAMP
-    `);
-    stmt.bind([
+      RETURNING *
+    `, [
       normalizedCode,
       name || normalizedCode,
       symbol || normalizedCode,
       toUsd,
       fromUsd
     ]);
-    stmt.step();
-    stmt.free();
-    save();
 
     return this.findByCode(normalizedCode);
   }
 
-  static convert(amount, fromCode = DEFAULT_BASE_CURRENCY, toCode = DEFAULT_BASE_CURRENCY) {
+  static async convert(amount, fromCode = DEFAULT_BASE_CURRENCY, toCode = DEFAULT_BASE_CURRENCY) {
     const value = Number(amount || 0);
-    const from = this.findByCode(fromCode);
-    const to = this.findByCode(toCode);
+    const from = await this.findByCode(fromCode);
+    const to = await this.findByCode(toCode);
 
     if (!from || !to) {
       return value;
@@ -87,13 +75,13 @@ class Currency {
     return usdAmount * Number(to.exchangeRateFromUsd || 1);
   }
 
-  static withDisplayAmount(amount, currencyCode) {
-    const currency = this.findByCode(currencyCode) || this.findByCode(DEFAULT_BASE_CURRENCY);
+  static async withDisplayAmount(amount, currencyCode) {
+    const currency = await this.findByCode(currencyCode) || await this.findByCode(DEFAULT_BASE_CURRENCY);
     const code = currency?.code || DEFAULT_BASE_CURRENCY;
 
     return {
       amount: Number(amount || 0),
-      displayAmount: this.convert(amount, DEFAULT_BASE_CURRENCY, code),
+      displayAmount: await this.convert(amount, DEFAULT_BASE_CURRENCY, code),
       displayCurrency: code,
       displaySymbol: currency?.symbol || code
     };
@@ -118,15 +106,15 @@ class Currency {
       throw new Error('Exchange rate API response did not include rates');
     }
 
-    Object.entries(rates).forEach(([code, rate]) => {
-      const existing = this.findByCode(code);
-      this.upsert({
+    for (const [code, rate] of Object.entries(rates)) {
+      const existing = await this.findByCode(code);
+      await this.upsert({
         code,
         name: existing?.name || code,
         symbol: existing?.symbol || code,
         exchangeRateFromUsd: Number(rate)
       });
-    });
+    }
 
     return this.findAll();
   }

@@ -10,5 +10,20 @@
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
+  },
+  "services": {
+    "backend": {
+      "type": "web",
+      "buildCommand": "cd backend && npm install",
+      "startCommand": "cd backend && npm start",
+      "envVars": {
+        "NODE_ENV": "production",
+        "BASE_CURRENCY": "INR"
+      }
+    },
+    "database": {
+      "type": "postgres",
+      "ipAllowList": ["0.0.0.0/0"]
+    }
   }
 }

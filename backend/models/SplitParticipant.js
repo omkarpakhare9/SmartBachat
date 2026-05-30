@@ -1,218 +1,161 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 const crypto = require('crypto');
 
 class SplitParticipant {
   // Add participant to split (could be existing user or email)
-  static addParticipant({ split_id, user_id, email, share }) {
-    const db = getDb();
-    const stmt = db.prepare(`
-      INSERT INTO split_participants (split_id, user_id, email, share, status)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    
+  static async addParticipant({ split_id, user_id, email, share }) {
+    const pool = getPool();
     const status = user_id ? 'accepted' : 'pending';
-    stmt.bind([split_id, user_id || null, email || null, share, status]);
-    stmt.step();
-    stmt.free();
-    save();
     
-    // Get the newly created participant
-    const queryStmt = db.prepare(`
-      SELECT id FROM split_participants 
-      WHERE split_id = ? AND (user_id = ? OR email = ?)
-      ORDER BY id DESC LIMIT 1
-    `);
-    queryStmt.bind([split_id, user_id, email]);
-    
-    let participantId = null;
-    if (queryStmt.step()) {
-      const row = queryStmt.getAsObject();
-      participantId = row.id;
-    }
-    queryStmt.free();
-    
-    return participantId ? this.findById(participantId) : null;
+    const result = await pool.query(`
+      INSERT INTO split_participants (split_id, user_id, email, share, status)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `, [split_id, user_id || null, email || null, share, status]);
+
+    const participantId = result.rows[0].id;
+    return this.findById(participantId);
   }
 
   // Create invitation for participant
-  static createInvitation({ split_id, participant_id, email }) {
-    const db = getDb();
+  static async createInvitation({ split_id, participant_id, email }) {
+    const pool = getPool();
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     
-    const stmt = db.prepare(`
+    await pool.query(`
       INSERT INTO split_invitations (split_id, participant_id, email, token, expires_at)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    stmt.bind([split_id, participant_id, email, token, expiresAt.toISOString()]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3, $4, $5)
+    `, [split_id, participant_id, email, token, expiresAt.toISOString()]);
     
     return token;
   }
 
   // Find participant by ID
-  static findById(id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findById(id) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT sp.*, u.name, u.email as user_email
       FROM split_participants sp
       LEFT JOIN users u ON sp.user_id = u.id
-      WHERE sp.id = ?
-    `);
-    stmt.bind([id]);
-    
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+      WHERE sp.id = $1
+    `, [id]);
+
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
   // Find participants by split
-  static findBySplit(split_id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findBySplit(split_id) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT sp.*, u.name, u.email as user_email
       FROM split_participants sp
       LEFT JOIN users u ON sp.user_id = u.id
-      WHERE sp.split_id = ?
+      WHERE sp.split_id = $1
       ORDER BY sp.invited_at DESC
-    `);
-    stmt.bind([split_id]);
-    
-    const participants = [];
-    while (stmt.step()) {
-      participants.push(stmt.getAsObject());
-    }
-    stmt.free();
-    
-    return participants;
+    `, [split_id]);
+
+    return result.rows;
   }
 
   // Find invitation by token
-  static findInvitationByToken(token) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findInvitationByToken(token) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT si.*, sp.email, sp.share, s.id as split_id
       FROM split_invitations si
       JOIN split_participants sp ON si.participant_id = sp.id
       JOIN splits s ON si.split_id = s.id
-      WHERE si.token = ? AND si.status = 'pending' AND datetime(si.expires_at) > datetime('now')
-    `);
-    stmt.bind([token]);
-    
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result;
+      WHERE si.token = $1 AND si.status = 'pending' AND si.expires_at > NOW()
+    `, [token]);
+
+    if (result.rows.length > 0) {
+      return result.rows[0];
     }
-    stmt.free();
     return null;
   }
 
   // Accept invitation
-  static acceptInvitation(token, user_id) {
-    const db = getDb();
+  static async acceptInvitation(token, user_id) {
+    const pool = getPool();
     
     // Get invitation details
-    const invitation = this.findInvitationByToken(token);
+    const invitation = await this.findInvitationByToken(token);
     if (!invitation) {
       return null;
     }
 
     // Update participant
-    const updateParticipantStmt = db.prepare(`
+    await pool.query(`
       UPDATE split_participants 
-      SET user_id = ?, status = 'accepted', accepted_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    updateParticipantStmt.bind([user_id, invitation.id]);
-    updateParticipantStmt.step();
-    updateParticipantStmt.free();
+      SET user_id = $1, status = 'accepted', accepted_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+    `, [user_id, invitation.id]);
 
     // Update invitation
-    const updateInvitationStmt = db.prepare(`
+    await pool.query(`
       UPDATE split_invitations 
       SET status = 'accepted', responded_at = CURRENT_TIMESTAMP
-      WHERE token = ?
-    `);
-    updateInvitationStmt.bind([token]);
-    updateInvitationStmt.step();
-    updateInvitationStmt.free();
+      WHERE token = $1
+    `, [token]);
     
-    save();
     return this.findById(invitation.id);
   }
 
   // Decline invitation
-  static declineInvitation(token) {
-    const db = getDb();
+  static async declineInvitation(token) {
+    const pool = getPool();
     
     // Get invitation details
-    const invitation = this.findInvitationByToken(token);
+    const invitation = await this.findInvitationByToken(token);
     if (!invitation) {
       return null;
     }
 
     // Update participant status
-    const updateParticipantStmt = db.prepare(`
+    await pool.query(`
       UPDATE split_participants 
       SET status = 'declined'
-      WHERE id = ?
-    `);
-    updateParticipantStmt.bind([invitation.id]);
-    updateParticipantStmt.step();
-    updateParticipantStmt.free();
+      WHERE id = $1
+    `, [invitation.id]);
 
     // Update invitation
-    const updateInvitationStmt = db.prepare(`
+    await pool.query(`
       UPDATE split_invitations 
       SET status = 'declined', responded_at = CURRENT_TIMESTAMP
-      WHERE token = ?
-    `);
-    updateInvitationStmt.bind([token]);
-    updateInvitationStmt.step();
-    updateInvitationStmt.free();
+      WHERE token = $1
+    `, [token]);
     
-    save();
     return this.findById(invitation.id);
   }
 
   // Remove participant from split
-  static removeParticipant(participant_id) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async removeParticipant(participant_id) {
+    const pool = getPool();
+    await pool.query(`
       UPDATE split_participants 
       SET status = 'removed'
-      WHERE id = ?
-    `);
-    stmt.bind([participant_id]);
-    stmt.step();
-    stmt.free();
-    save();
+      WHERE id = $1
+    `, [participant_id]);
     return this.findById(participant_id);
   }
 
   // Resend invitation
-  static resendInvitation(participant_id) {
-    const db = getDb();
+  static async resendInvitation(participant_id) {
+    const pool = getPool();
     
     // Invalidate old invitation
-    const invalidateStmt = db.prepare(`
+    await pool.query(`
       UPDATE split_invitations 
       SET status = 'expired'
-      WHERE participant_id = ? AND status = 'pending'
-    `);
-    invalidateStmt.bind([participant_id]);
-    invalidateStmt.step();
-    invalidateStmt.free();
+      WHERE participant_id = $1 AND status = 'pending'
+    `, [participant_id]);
 
     // Get participant details
-    const participant = this.findById(participant_id);
+    const participant = await this.findById(participant_id);
     if (!participant) {
       return null;
     }
@@ -221,30 +164,22 @@ class SplitParticipant {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     
-    const stmt = db.prepare(`
+    await pool.query(`
       INSERT INTO split_invitations (split_id, participant_id, email, token, expires_at)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    stmt.bind([participant.split_id, participant_id, participant.email, token, expiresAt.toISOString()]);
-    stmt.step();
-    stmt.free();
+      VALUES ($1, $2, $3, $4, $5)
+    `, [participant.split_id, participant_id, participant.email, token, expiresAt.toISOString()]);
     
-    save();
     return token;
   }
 
   // Update participant share
-  static updateShare(participant_id, share) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async updateShare(participant_id, share) {
+    const pool = getPool();
+    await pool.query(`
       UPDATE split_participants 
-      SET share = ?
-      WHERE id = ?
-    `);
-    stmt.bind([share, participant_id]);
-    stmt.step();
-    stmt.free();
-    save();
+      SET share = $1
+      WHERE id = $2
+    `, [share, participant_id]);
     return this.findById(participant_id);
   }
 }

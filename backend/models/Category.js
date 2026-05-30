@@ -1,78 +1,54 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 
 class Category {
-  static create({ name, type, user_id, color, icon, is_default = false }) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async create({ name, type, user_id, color, icon, is_default = false }) {
+    const pool = getPool();
+    const result = await pool.query(`
       INSERT INTO categories (name, type, user_id, color, icon, is_default)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    stmt.bind([name, type, user_id, color, icon, is_default ? 1 : 0]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [name, type, user_id, color, icon, is_default ? 1 : 0]);
     
-    // Find and return the newly created category by querying unique fields
-    const queryStmt = db.prepare(`
-      SELECT * FROM categories WHERE user_id = ? AND name = ? AND type = ?
-    `);
-    queryStmt.bind([user_id, name, type]);
+    return this.formatCategory(result.rows[0]);
+  }
+
+  static async findById(id) {
+    const pool = getPool();
+    const result = await pool.query('SELECT * FROM categories WHERE id = $1', [id]);
     
-    if (queryStmt.step()) {
-      const row = queryStmt.getAsObject();
-      queryStmt.free();
-      return this.formatCategory(row);
+    if (result.rows.length > 0) {
+      return this.formatCategory(result.rows[0]);
     }
-    queryStmt.free();
     return null;
   }
 
-  static findById(id) {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM categories WHERE id = ?');
-    stmt.bind([id]);
-    
-    if (stmt.step()) {
-      const row = stmt.getAsObject();
-      stmt.free();
-      return this.formatCategory(row);
-    }
-    stmt.free();
-    return null;
-  }
-
-  static findByUser(userId, filters = {}) {
-    const db = getDb();
-    let query = 'SELECT * FROM categories WHERE user_id = ?';
+  static async findByUser(userId, filters = {}) {
+    const pool = getPool();
+    let query = 'SELECT * FROM categories WHERE user_id = $1';
     const params = [userId];
+    let paramIndex = 2;
 
     if (filters.type) {
-      query += ' AND type = ?';
+      query += ` AND type = $${paramIndex}`;
       params.push(filters.type);
+      paramIndex++;
     }
 
     query += ' ORDER BY name ASC';
 
-    const stmt = db.prepare(query);
-    stmt.bind(params);
+    const result = await pool.query(query, params);
     
-    const rows = [];
-    while (stmt.step()) {
-      rows.push(stmt.getAsObject());
-    }
-    stmt.free();
-    
-    return rows.map(row => this.formatCategory(row));
+    return result.rows.map(row => this.formatCategory(row));
   }
 
-  static update(id, data) {
-    const db = getDb();
+  static async update(id, data) {
+    const pool = getPool();
     const fields = [];
     const params = [];
 
     Object.keys(data).forEach(key => {
       if (data[key] !== undefined && key !== 'id' && key !== 'user_id') {
-        fields.push(`${key} = ?`);
+        fields.push(`${key} = $${fields.length + 1}`);
         params.push(data[key]);
       }
     });
@@ -80,25 +56,20 @@ class Category {
     if (fields.length === 0) return null;
 
     params.push(id);
-    const stmt = db.prepare(`
+    const query = `
       UPDATE categories 
       SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    stmt.bind(params);
-    stmt.step();
-    stmt.free();
-    save();
-    return this.findById(id);
+      WHERE id = $${fields.length + 1}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, params);
+    return this.formatCategory(result.rows[0]);
   }
 
-  static delete(id) {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM categories WHERE id = ?');
-    stmt.bind([id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async delete(id) {
+    const pool = getPool();
+    await pool.query('DELETE FROM categories WHERE id = $1', [id]);
   }
 
   static formatCategory(row) {

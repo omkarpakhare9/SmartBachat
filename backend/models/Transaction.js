@@ -1,39 +1,22 @@
-const { getDb, save } = require('../config/database');
+const { getPool } = require('../config/database');
 const Currency = require('./Currency');
 const User = require('./User');
 
 class Transaction {
-  static create({ user_id, type, amount, category_id, description, date, is_split = false }) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async create({ user_id, type, amount, category_id, description, date, is_split = false }) {
+    const pool = getPool();
+    const result = await pool.query(`
       INSERT INTO transactions (user_id, type, amount, category_id, description, date, is_split)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.bind([user_id, type, amount, category_id, description, date, is_split ? 1 : 0]);
-    stmt.step();
-    stmt.free();
-    save();
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id
+    `, [user_id, type, amount, category_id, description, date, is_split ? 1 : 0]);
     
-    // Find the newly created transaction
-    const queryStmt = db.prepare(`
-      SELECT t.id FROM transactions t
-      WHERE t.user_id = ? AND t.date = ? AND t.amount = ? AND t.description = ?
-      ORDER BY t.id DESC LIMIT 1
-    `);
-    queryStmt.bind([user_id, date, amount, description]);
-    
-    if (queryStmt.step()) {
-      const row = queryStmt.getAsObject();
-      queryStmt.free();
-      return this.findById(row.id);
-    }
-    queryStmt.free();
-    return null;
+    return this.findById(result.rows[0].id);
   }
 
-  static findById(id, preferredCurrency = null) {
-    const db = getDb();
-    const stmt = db.prepare(`
+  static async findById(id, preferredCurrency = null) {
+    const pool = getPool();
+    const result = await pool.query(`
       SELECT t.*, 
              c.name as category_name, 
              c.color as category_color, 
@@ -41,21 +24,17 @@ class Transaction {
              c.type as category_type
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
-      WHERE t.id = ?
-    `);
-    stmt.bind([id]);
+      WHERE t.id = $1
+    `, [id]);
     
-    if (stmt.step()) {
-      const row = stmt.getAsObject();
-      stmt.free();
-      return this.formatTransaction(row, preferredCurrency);
+    if (result.rows.length > 0) {
+      return this.formatTransaction(result.rows[0], preferredCurrency);
     }
-    stmt.free();
     return null;
   }
 
-  static findByUser(userId, filters = {}) {
-    const db = getDb();
+  static async findByUser(userId, filters = {}) {
+    const pool = getPool();
     let query = `
       SELECT t.*, 
              c.name as category_name, 
@@ -64,93 +43,90 @@ class Transaction {
              c.type as category_type
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
-      WHERE t.user_id = ?
+      WHERE t.user_id = $1
     `;
     const params = [userId];
+    let paramIndex = 2;
 
     if (filters.type) {
-      query += ' AND t.type = ?';
+      query += ` AND t.type = $${paramIndex}`;
       params.push(filters.type);
+      paramIndex++;
     }
     if (filters.category_id) {
-      query += ' AND t.category_id = ?';
+      query += ` AND t.category_id = $${paramIndex}`;
       params.push(filters.category_id);
+      paramIndex++;
     }
     if (filters.start_date) {
-      query += ' AND t.date >= ?';
+      query += ` AND t.date >= $${paramIndex}`;
       params.push(filters.start_date);
+      paramIndex++;
     }
     if (filters.end_date) {
-      query += ' AND t.date <= ?';
+      query += ` AND t.date <= $${paramIndex}`;
       params.push(filters.end_date);
+      paramIndex++;
     }
 
     query += ' ORDER BY t.date DESC';
 
     if (filters.limit) {
-      query += ' LIMIT ?';
+      query += ` LIMIT $${paramIndex}`;
       params.push(filters.limit);
+      paramIndex++;
     }
     if (filters.offset) {
-      query += ' OFFSET ?';
+      query += ` OFFSET $${paramIndex}`;
       params.push(filters.offset);
+      paramIndex++;
     }
 
-    const stmt = db.prepare(query);
-    stmt.bind(params);
+    const result = await pool.query(query, params);
     
-    const rows = [];
-    while (stmt.step()) {
-      rows.push(stmt.getAsObject());
-    }
-    stmt.free();
-    
-    const user = User.findById(userId);
-    return rows.map(row => this.formatTransaction(row, user?.preferredCurrency));
+    const user = await User.findById(userId);
+    return result.rows.map(row => this.formatTransaction(row, user?.preferredCurrency));
   }
 
-  static countByUser(userId, filters = {}) {
-    const db = getDb();
-    let query = 'SELECT COUNT(*) as count FROM transactions WHERE user_id = ?';
+  static async countByUser(userId, filters = {}) {
+    const pool = getPool();
+    let query = 'SELECT COUNT(*) as count FROM transactions WHERE user_id = $1';
     const params = [userId];
+    let paramIndex = 2;
 
     if (filters.type) {
-      query += ' AND type = ?';
+      query += ` AND type = $${paramIndex}`;
       params.push(filters.type);
+      paramIndex++;
     }
     if (filters.category_id) {
-      query += ' AND category_id = ?';
+      query += ` AND category_id = $${paramIndex}`;
       params.push(filters.category_id);
+      paramIndex++;
     }
     if (filters.start_date) {
-      query += ' AND date >= ?';
+      query += ` AND date >= $${paramIndex}`;
       params.push(filters.start_date);
+      paramIndex++;
     }
     if (filters.end_date) {
-      query += ' AND date <= ?';
+      query += ` AND date <= $${paramIndex}`;
       params.push(filters.end_date);
+      paramIndex++;
     }
 
-    const stmt = db.prepare(query);
-    stmt.bind(params);
-    
-    if (stmt.step()) {
-      const result = stmt.getAsObject();
-      stmt.free();
-      return result.count;
-    }
-    stmt.free();
-    return 0;
+    const result = await pool.query(query, params);
+    return parseInt(result.rows[0].count);
   }
 
-  static update(id, data) {
-    const db = getDb();
+  static async update(id, data) {
+    const pool = getPool();
     const fields = [];
     const params = [];
 
     Object.keys(data).forEach(key => {
       if (data[key] !== undefined && key !== 'id' && key !== 'user_id') {
-        fields.push(`${key} = ?`);
+        fields.push(`${key} = $${fields.length + 1}`);
         params.push(data[key]);
       }
     });
@@ -158,25 +134,19 @@ class Transaction {
     if (fields.length === 0) return null;
 
     params.push(id);
-    const stmt = db.prepare(`
+    const query = `
       UPDATE transactions 
       SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    stmt.bind(params);
-    stmt.step();
-    stmt.free();
-    save();
+      WHERE id = $${fields.length + 1}
+    `;
+    
+    await pool.query(query, params);
     return this.findById(id);
   }
 
-  static delete(id) {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM transactions WHERE id = ?');
-    stmt.bind([id]);
-    stmt.step();
-    stmt.free();
-    save();
+  static async delete(id) {
+    const pool = getPool();
+    await pool.query('DELETE FROM transactions WHERE id = $1', [id]);
   }
 
   static formatTransaction(row, preferredCurrency = null) {
