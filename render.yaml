@@ -4,14 +4,5 @@ services:
     env: node
     rootDir: backend
     buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /api
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 5000
-      - key: JWT_SECRET
-        generateValue: true
-      - key: BASE_CURRENCY
-        value: INR
+    startCommand: node server.js
+    healthCheckPath: /
