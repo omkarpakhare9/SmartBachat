@@ -52,7 +52,7 @@ const Layout = () => {
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card">
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-primary">ExpenseTracker</h1>
+          <h1 className="text-2xl font-bold text-primary">SmartBachat</h1>
         </div>
         <nav className="px-4 space-y-2">
           {navItems.map((item) => {

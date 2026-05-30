@@ -36,7 +36,7 @@ const templates = {
               <p>Consider reviewing your expenses in this category to avoid exceeding your budget.</p>
               <a href="${process.env.APP_URL}/budgets" class="button">View Budgets</a>
               <div class="footer">
-                <p>This is an automated message from Expense Tracker. You can disable these notifications in your settings.</p>
+                <p>This is an automated message from SmartBachat. You can disable these notifications in your settings.</p>
               </div>
             </div>
           </div>
@@ -80,7 +80,7 @@ const templates = {
               <p>Check the split details and mark your portion as paid if applicable.</p>
               <a href="${process.env.APP_URL}/splits" class="button">View Splits</a>
               <div class="footer">
-                <p>This is an automated message from Expense Tracker.</p>
+                <p>This is an automated message from SmartBachat.</p>
               </div>
             </div>
           </div>
@@ -128,7 +128,7 @@ const templates = {
               </p>
               <p>This invitation will expire in 7 days.</p>
               <div class="footer">
-                <p>This is an automated message from Expense Tracker.</p>
+                <p>This is an automated message from SmartBachat.</p>
               </div>
             </div>
           </div>
@@ -173,7 +173,7 @@ const templates = {
               <p>This transaction will be automatically created on the specified schedule.</p>
               <a href="${process.env.APP_URL}/recurring" class="button">Manage Recurring</a>
               <div class="footer">
-                <p>This is an automated message from Expense Tracker. You can manage recurring transactions in your dashboard.</p>
+                <p>This is an automated message from SmartBachat. You can manage recurring transactions in your dashboard.</p>
               </div>
             </div>
           </div>
@@ -186,7 +186,7 @@ const templates = {
   // Welcome email template
   welcome: ({ userName, email }) => {
     return {
-      subject: `Welcome to Expense Tracker!`,
+      subject: `Welcome to SmartBachat!`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -205,7 +205,7 @@ const templates = {
         <body>
           <div class="container">
             <div class="header">
-              <h2>Welcome to Expense Tracker!</h2>
+              <h2>Welcome to SmartBachat!</h2>
             </div>
             <div class="content">
               <p>Hi ${userName},</p>
@@ -223,7 +223,7 @@ const templates = {
               <a href="${process.env.APP_URL}/dashboard" class="button">Get Started</a>
               <div class="footer">
                 <p>Need help? Contact our support team.</p>
-                <p>This is an automated message from Expense Tracker.</p>
+                <p>This is an automated message from SmartBachat.</p>
               </div>
             </div>
           </div>

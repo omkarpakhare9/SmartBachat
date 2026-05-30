@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async (options) => {
   try {
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'Expense Tracker <noreply@expensetracker.com>',
+      from: process.env.EMAIL_FROM || 'SmartBachat <noreply@smartbachat.com>',
       to: options.to,
       subject: options.subject,
       html: options.html,

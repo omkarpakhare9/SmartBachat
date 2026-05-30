@@ -45,7 +45,7 @@ init().then(() => {
   // Root route
   app.get('/', (req, res) => {
     res.json({
-      message: 'Expense Tracker API',
+      message: 'SmartBachat API',
       version: '1.0.0',
       endpoints: {
         auth: '/api/auth',
