@@ -1,12 +1,12 @@
 # Expense Management Web App
 
-A full-stack expense tracker with JWT auth, SQL.js persistence, budgets, reports, receipts, expense splits, email notifications, and multi-currency display conversion.
+A full-stack expense tracker with JWT auth, PostgreSQL persistence, budgets, reports, receipts, expense splits, email notifications, and multi-currency display conversion.
 
 ## Tech Stack
 
 ### Backend
 - Node.js and Express
-- SQL.js file database (`backend/expense-tracker.db` by default)
+- PostgreSQL database with connection pooling
 - JWT authentication
 - Nodemailer email delivery
 - Exchange-rate provider integration
@@ -90,7 +90,7 @@ Local URLs:
 
 `JWT_EXPIRE`: JWT lifetime. Defaults to `7d`.
 
-`DATABASE_PATH`: Optional SQL.js database file path. Defaults to `backend/expense-tracker.db`.
+`DATABASE_URL`: PostgreSQL connection string. Railway automatically provides this in production. For local development, use `postgresql://localhost:5432/expense_tracker`.
 
 `FRONTEND_URL`: Public frontend URL used in email links.
 
@@ -150,11 +150,11 @@ Configure a real email provider before using test or production notification end
 ### Railway Backend
 
 1. Create a Railway project from this repository.
-2. Railway will use `railway.json`.
+2. Railway will use `railway.json` which includes a PostgreSQL database service.
 3. Set backend environment variables, especially `JWT_SECRET`, `NODE_ENV=production`, `FRONTEND_URL`, `CORS_ORIGIN`, email settings, and currency settings.
 4. Deploy the backend service.
 
-SQL.js stores data in a file. For production persistence on Railway, configure a persistent volume and point `DATABASE_PATH` at that volume.
+Railway automatically provides `DATABASE_URL` for the PostgreSQL database.
 
 ### Render
 
@@ -163,7 +163,7 @@ SQL.js stores data in a file. For production persistence on Railway, configure a
 3. Fill secret env vars marked `sync: false`.
 4. Deploy the API web service and static frontend service.
 
-For persistent SQL.js data on Render, use a disk and set `DATABASE_PATH` to a path on that disk.
+For PostgreSQL persistence on Render, add a PostgreSQL database service and set `DATABASE_URL` to the connection string provided by Render.
 
 ## Production Commands
 
@@ -191,7 +191,7 @@ cd backend
 npm run test:e2e
 ```
 
-The test starts the API with a temporary SQL.js database and verifies Register, Login, Add Expense, Edit, Delete, Dashboard summary, transaction filtering, and Logout.
+The test starts the API with a temporary PostgreSQL database and verifies Register, Login, Add Expense, Edit, Delete, Dashboard summary, transaction filtering, and Logout.
 
 ## API Overview
 
@@ -217,4 +217,4 @@ The test starts the API with a temporary SQL.js database and verifies Register, 
 
 ## Notes
 
-This project no longer uses MongoDB or Mongoose. The backend persists through SQL.js and writes the database file after mutations.
+This project no longer uses MongoDB, Mongoose, or SQL.js. The backend persists through PostgreSQL with connection pooling for production deployment on Railway or Render.
