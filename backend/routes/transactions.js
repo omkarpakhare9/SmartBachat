@@ -21,8 +21,10 @@ router.get('/', protect, async (req, res) => {
       offset: (page - 1) * limit
     };
 
-    const transactions = Transaction.findByUser(req.user.id, filters);
-    const total = Transaction.countByUser(req.user.id, { type, category_id: category, start_date: startDate, end_date: endDate });
+    const [transactions, total] = await Promise.all([
+      Transaction.findByUser(req.user.id, filters),
+      Transaction.countByUser(req.user.id, { type, category_id: category, start_date: startDate, end_date: endDate })
+    ]);
 
     res.json({
       success: true,
@@ -45,8 +47,8 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.get('/:id', protect, async (req, res) => {
   try {
-    const user = User.findById(req.user.id);
-    const transaction = Transaction.findById(req.params.id, user?.preferredCurrency);
+    const user = await User.findById(req.user.id);
+    const transaction = await Transaction.findById(req.params.id, user?.preferredCurrency);
 
     if (!transaction || transaction.user !== req.user.id) {
       return res.status(404).json({
@@ -82,8 +84,8 @@ router.post('/', protect, [
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const user = User.findById(req.user.id);
-    const transaction = Transaction.create({
+    const user = await User.findById(req.user.id);
+    const transaction = await Transaction.create({
       user_id: req.user.id,
       type: req.body.type,
       amount: req.body.amount,
@@ -94,7 +96,7 @@ router.post('/', protect, [
 
     res.status(201).json({
       success: true,
-      data: Transaction.findById(transaction.id, user?.preferredCurrency)
+      data: await Transaction.findById(transaction.id, user?.preferredCurrency)
     });
   } catch (error) {
     console.error(error);
@@ -110,8 +112,8 @@ router.post('/', protect, [
 // @access  Private
 router.put('/:id', protect, async (req, res) => {
   try {
-    const user = User.findById(req.user.id);
-    const existing = Transaction.findById(req.params.id, user?.preferredCurrency);
+    const user = await User.findById(req.user.id);
+    const existing = await Transaction.findById(req.params.id, user?.preferredCurrency);
 
     if (!existing || existing.user !== req.user.id) {
       return res.status(404).json({
@@ -120,11 +122,11 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
-    const transaction = Transaction.update(req.params.id, req.body);
+    const transaction = await Transaction.update(req.params.id, req.body);
 
     res.json({
       success: true,
-      data: Transaction.findById(transaction.id, user?.preferredCurrency)
+      data: await Transaction.findById(transaction.id, user?.preferredCurrency)
     });
   } catch (error) {
     console.error(error);
@@ -140,7 +142,7 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Private
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const existing = Transaction.findById(req.params.id);
+    const existing = await Transaction.findById(req.params.id);
 
     if (!existing || existing.user !== req.user.id) {
       return res.status(404).json({
@@ -149,7 +151,7 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    Transaction.delete(req.params.id);
+    await Transaction.delete(req.params.id);
 
     res.json({
       success: true,

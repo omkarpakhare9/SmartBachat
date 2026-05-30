@@ -13,10 +13,10 @@ const upload = getMulterInstance();
 // @route   GET /api/receipts
 // @desc    Get all receipts for current user
 // @access  Private
-router.get('/', protect, (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const limit = req.query.limit || 50;
-    const receipts = Receipt.findByUser(req.user.id, limit);
+    const receipts = await Receipt.findByUser(req.user.id, limit);
 
     res.json({
       success: true,
@@ -34,10 +34,10 @@ router.get('/', protect, (req, res) => {
 // @route   GET /api/receipts/transaction/:transactionId
 // @desc    Get receipts for a specific transaction
 // @access  Private
-router.get('/transaction/:transactionId', protect, (req, res) => {
+router.get('/transaction/:transactionId', protect, async (req, res) => {
   try {
     // Verify user owns this transaction
-    const transaction = Transaction.findById(req.params.transactionId);
+    const transaction = await Transaction.findById(req.params.transactionId);
     if (!transaction || transaction.user !== req.user.id) {
       return res.status(403).json({
         success: false,
@@ -45,7 +45,7 @@ router.get('/transaction/:transactionId', protect, (req, res) => {
       });
     }
 
-    const receipts = Receipt.findByTransaction(req.params.transactionId);
+    const receipts = await Receipt.findByTransaction(req.params.transactionId);
 
     res.json({
       success: true,
@@ -63,7 +63,7 @@ router.get('/transaction/:transactionId', protect, (req, res) => {
 // @route   POST /api/receipts/transaction/:transactionId/upload
 // @desc    Upload receipt for transaction
 // @access  Private
-router.post('/transaction/:transactionId/upload', protect, upload.single('file'), (req, res) => {
+router.post('/transaction/:transactionId/upload', protect, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -73,7 +73,7 @@ router.post('/transaction/:transactionId/upload', protect, upload.single('file')
     }
 
     // Verify user owns this transaction
-    const transaction = Transaction.findById(req.params.transactionId);
+    const transaction = await Transaction.findById(req.params.transactionId);
     if (!transaction || transaction.user !== req.user.id) {
       // Delete uploaded file if not authorized
       if (req.file.path) {
@@ -102,7 +102,7 @@ router.post('/transaction/:transactionId/upload', protect, upload.single('file')
     }
 
     // Create receipt record
-    const receipt = Receipt.create({
+    const receipt = await Receipt.create({
       transaction_id: req.params.transactionId,
       user_id: req.user.id,
       file_url,
@@ -137,9 +137,9 @@ router.post('/transaction/:transactionId/upload', protect, upload.single('file')
 // @route   GET /api/receipts/:id
 // @desc    Get receipt by ID
 // @access  Private
-router.get('/:id', protect, (req, res) => {
+router.get('/:id', protect, async (req, res) => {
   try {
-    const receipt = Receipt.findById(req.params.id);
+    const receipt = await Receipt.findById(req.params.id);
 
     if (!receipt) {
       return res.status(404).json({
@@ -172,9 +172,9 @@ router.get('/:id', protect, (req, res) => {
 // @route   DELETE /api/receipts/:id
 // @desc    Delete receipt
 // @access  Private
-router.delete('/:id', protect, (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
   try {
-    const receipt = Receipt.findById(req.params.id);
+    const receipt = await Receipt.findById(req.params.id);
 
     if (!receipt) {
       return res.status(404).json({
@@ -204,7 +204,7 @@ router.delete('/:id', protect, (req, res) => {
     }
 
     // Delete receipt record
-    Receipt.delete(req.params.id);
+    await Receipt.delete(req.params.id);
 
     res.json({
       success: true,
@@ -222,9 +222,9 @@ router.delete('/:id', protect, (req, res) => {
 // @route   GET /api/receipts/:id/download
 // @desc    Download receipt file
 // @access  Private
-router.get('/:id/download', protect, (req, res) => {
+router.get('/:id/download', protect, async (req, res) => {
   try {
-    const receipt = Receipt.findById(req.params.id);
+    const receipt = await Receipt.findById(req.params.id);
 
     if (!receipt) {
       return res.status(404).json({

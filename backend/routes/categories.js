@@ -10,7 +10,7 @@ const { protect } = require('../middleware/auth');
 router.get('/', protect, async (req, res) => {
   try {
     const { type } = req.query;
-    const categories = Category.findByUser(req.user.id, { type });
+    const categories = await Category.findByUser(req.user.id, { type });
 
     res.json({
       success: true,
@@ -31,7 +31,7 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.get('/:id', protect, async (req, res) => {
   try {
-    const category = Category.findById(req.params.id);
+    const category = await Category.findById(req.params.id);
 
     if (!category || category.user !== req.user.id) {
       return res.status(404).json({
@@ -66,7 +66,7 @@ router.post('/', protect, [
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const category = Category.create({
+    const category = await Category.create({
       ...req.body,
       user_id: req.user.id
     });
@@ -95,7 +95,7 @@ router.post('/', protect, [
 // @access  Private
 router.put('/:id', protect, async (req, res) => {
   try {
-    const category = Category.findById(req.params.id);
+    const category = await Category.findById(req.params.id);
 
     if (!category || category.user !== req.user.id) {
       return res.status(404).json({
@@ -111,7 +111,7 @@ router.put('/:id', protect, async (req, res) => {
       });
     }
 
-    const updated = Category.update(req.params.id, req.body);
+    const updated = await Category.update(req.params.id, req.body);
 
     res.json({
       success: true,
@@ -131,7 +131,7 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Private
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const category = Category.findById(req.params.id);
+    const category = await Category.findById(req.params.id);
 
     if (!category || category.user !== req.user.id) {
       return res.status(404).json({
@@ -147,7 +147,7 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    Category.delete(req.params.id);
+    await Category.delete(req.params.id);
 
     res.json({
       success: true,

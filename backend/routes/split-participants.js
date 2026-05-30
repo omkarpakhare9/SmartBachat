@@ -9,9 +9,9 @@ const { protect } = require('../middleware/auth');
 // @route   GET /api/splits/:id/participants
 // @desc    Get all participants for a split
 // @access  Private
-router.get('/', protect, (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
-    const split = Split.findById(req.params.id);
+    const split = await Split.findById(req.params.id);
     if (!split) {
       return res.status(404).json({
         success: false,
@@ -27,7 +27,7 @@ router.get('/', protect, (req, res) => {
       });
     }
 
-    const participants = SplitParticipant.findBySplit(req.params.id);
+    const participants = await SplitParticipant.findBySplit(req.params.id);
 
     res.json({
       success: true,
@@ -49,14 +49,14 @@ router.post('/', [
   protect,
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('share').isFloat({ min: 0 }).withMessage('Share must be a positive number')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const split = Split.findById(req.params.id);
+    const split = await Split.findById(req.params.id);
     if (!split) {
       return res.status(404).json({
         success: false,
@@ -75,7 +75,7 @@ router.post('/', [
     const { email, share } = req.body;
 
     // Check if email already exists in split
-    const existingParticipants = SplitParticipant.findBySplit(req.params.id);
+    const existingParticipants = await SplitParticipant.findBySplit(req.params.id);
     const emailExists = existingParticipants.some(p => 
       (p.user_email === email || p.email === email) && p.status !== 'removed'
     );
@@ -88,10 +88,10 @@ router.post('/', [
     }
 
     // Check if user exists
-    let user = User.findByEmail(email);
+    let user = await User.findByEmail(email);
     
     // Add participant
-    const participant = SplitParticipant.addParticipant({
+    const participant = await SplitParticipant.addParticipant({
       split_id: req.params.id,
       user_id: user ? user.id : null,
       email,
@@ -101,7 +101,7 @@ router.post('/', [
     // Create invitation if not existing user
     let invitationToken = null;
     if (!user) {
-      invitationToken = SplitParticipant.createInvitation({
+      invitationToken = await SplitParticipant.createInvitation({
         split_id: req.params.id,
         participant_id: participant.id,
         email
@@ -129,14 +129,14 @@ router.post('/', [
 router.put('/:participantId/share', [
   protect,
   body('share').isFloat({ min: 0 }).withMessage('Share must be a positive number')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const split = Split.findById(req.params.id);
+    const split = await Split.findById(req.params.id);
     if (!split) {
       return res.status(404).json({
         success: false,
@@ -152,7 +152,7 @@ router.put('/:participantId/share', [
       });
     }
 
-    const participant = SplitParticipant.findById(req.params.participantId);
+    const participant = await SplitParticipant.findById(req.params.participantId);
     if (!participant) {
       return res.status(404).json({
         success: false,
@@ -160,7 +160,7 @@ router.put('/:participantId/share', [
       });
     }
 
-    const updatedParticipant = SplitParticipant.updateShare(
+    const updatedParticipant = await SplitParticipant.updateShare(
       req.params.participantId,
       req.body.share
     );
@@ -182,9 +182,9 @@ router.put('/:participantId/share', [
 // @route   DELETE /api/splits/:id/participants/:participantId
 // @desc    Remove participant from split
 // @access  Private
-router.delete('/:participantId', protect, (req, res) => {
+router.delete('/:participantId', protect, async (req, res) => {
   try {
-    const split = Split.findById(req.params.id);
+    const split = await Split.findById(req.params.id);
     if (!split) {
       return res.status(404).json({
         success: false,
@@ -200,7 +200,7 @@ router.delete('/:participantId', protect, (req, res) => {
       });
     }
 
-    const participant = SplitParticipant.findById(req.params.participantId);
+    const participant = await SplitParticipant.findById(req.params.participantId);
     if (!participant) {
       return res.status(404).json({
         success: false,
@@ -208,7 +208,7 @@ router.delete('/:participantId', protect, (req, res) => {
       });
     }
 
-    SplitParticipant.removeParticipant(req.params.participantId);
+    await SplitParticipant.removeParticipant(req.params.participantId);
 
     res.json({
       success: true,
@@ -226,9 +226,9 @@ router.delete('/:participantId', protect, (req, res) => {
 // @route   POST /api/splits/:id/participants/:participantId/resend-invitation
 // @desc    Resend invitation to participant
 // @access  Private
-router.post('/:participantId/resend-invitation', protect, (req, res) => {
+router.post('/:participantId/resend-invitation', protect, async (req, res) => {
   try {
-    const split = Split.findById(req.params.id);
+    const split = await Split.findById(req.params.id);
     if (!split) {
       return res.status(404).json({
         success: false,
@@ -244,7 +244,7 @@ router.post('/:participantId/resend-invitation', protect, (req, res) => {
       });
     }
 
-    const participant = SplitParticipant.findById(req.params.participantId);
+    const participant = await SplitParticipant.findById(req.params.participantId);
     if (!participant) {
       return res.status(404).json({
         success: false,
@@ -259,7 +259,7 @@ router.post('/:participantId/resend-invitation', protect, (req, res) => {
       });
     }
 
-    const token = SplitParticipant.resendInvitation(req.params.participantId);
+    const token = await SplitParticipant.resendInvitation(req.params.participantId);
 
     res.json({
       success: true,
@@ -280,7 +280,7 @@ router.post('/:participantId/resend-invitation', protect, (req, res) => {
 // @access  Private
 router.post('/invitations/accept', protect, [
   body('token').notEmpty().withMessage('Invitation token is required')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -289,7 +289,7 @@ router.post('/invitations/accept', protect, [
 
     const { token } = req.body;
 
-    const invitation = SplitParticipant.findInvitationByToken(token);
+    const invitation = await SplitParticipant.findInvitationByToken(token);
     if (!invitation) {
       return res.status(404).json({
         success: false,
@@ -305,7 +305,7 @@ router.post('/invitations/accept', protect, [
       });
     }
 
-    const participant = SplitParticipant.acceptInvitation(token, req.user.id);
+    const participant = await SplitParticipant.acceptInvitation(token, req.user.id);
 
     res.json({
       success: true,
@@ -326,7 +326,7 @@ router.post('/invitations/accept', protect, [
 // @access  Public
 router.post('/invitations/decline', [
   body('token').notEmpty().withMessage('Invitation token is required')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -335,7 +335,7 @@ router.post('/invitations/decline', [
 
     const { token } = req.body;
 
-    const invitation = SplitParticipant.findInvitationByToken(token);
+    const invitation = await SplitParticipant.findInvitationByToken(token);
     if (!invitation) {
       return res.status(404).json({
         success: false,
@@ -343,7 +343,7 @@ router.post('/invitations/decline', [
       });
     }
 
-    SplitParticipant.declineInvitation(token);
+    await SplitParticipant.declineInvitation(token);
 
     res.json({
       success: true,

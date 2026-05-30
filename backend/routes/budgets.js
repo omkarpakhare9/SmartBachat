@@ -8,10 +8,10 @@ const { protect } = require('../middleware/auth');
 // @route   GET /api/budgets
 // @desc    Get all budgets for current user
 // @access  Private
-router.get('/', protect, (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const { period } = req.query;
-    const budgets = Budget.findByUser(req.user.id, period);
+    const budgets = await Budget.findByUser(req.user.id, period);
 
     res.json({
       success: true,
@@ -29,9 +29,9 @@ router.get('/', protect, (req, res) => {
 // @route   GET /api/budgets/:id
 // @desc    Get budget by ID
 // @access  Private
-router.get('/:id', protect, (req, res) => {
+router.get('/:id(\\d+)', protect, async (req, res) => {
   try {
-    const budget = Budget.findById(req.params.id);
+    const budget = await Budget.findById(req.params.id);
 
     if (!budget) {
       return res.status(404).json({
@@ -70,7 +70,7 @@ router.post('/', [
   body('amount').isFloat({ min: 0 }).withMessage('Amount must be a positive number'),
   body('period').optional().isIn(['weekly', 'monthly', 'yearly']).withMessage('Invalid period'),
   body('alert_threshold').optional().isFloat({ min: 0, max: 100 }).withMessage('Alert threshold must be between 0 and 100')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -80,8 +80,8 @@ router.post('/', [
     const { category_id, amount, period = 'monthly', alert_threshold = 80, alert_enabled = 1 } = req.body;
 
     // Verify category exists and belongs to user
-    const category = Category.findById(category_id);
-    if (!category || category.user_id !== req.user.id) {
+    const category = await Category.findById(category_id);
+    if (!category || category.user !== req.user.id) {
       return res.status(404).json({
         success: false,
         message: 'Category not found'
@@ -89,7 +89,7 @@ router.post('/', [
     }
 
     // Check if budget already exists for this category and period
-    const existingBudget = Budget.findByUserAndCategory(req.user.id, category_id, period);
+    const existingBudget = await Budget.findByUserAndCategory(req.user.id, category_id, period);
     if (existingBudget) {
       return res.status(400).json({
         success: false,
@@ -97,7 +97,7 @@ router.post('/', [
       });
     }
 
-    const budget = Budget.create({
+    const budget = await Budget.create({
       user_id: req.user.id,
       category_id,
       amount,
@@ -123,19 +123,19 @@ router.post('/', [
 // @route   PUT /api/budgets/:id
 // @desc    Update budget
 // @access  Private
-router.put('/:id', [
+router.put('/:id(\\d+)', [
   protect,
   body('amount').optional().isFloat({ min: 0 }).withMessage('Amount must be a positive number'),
   body('alert_threshold').optional().isFloat({ min: 0, max: 100 }).withMessage('Alert threshold must be between 0 and 100'),
   body('alert_enabled').optional().isBoolean().withMessage('Alert enabled must be boolean')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const budget = Budget.findById(req.params.id);
+    const budget = await Budget.findById(req.params.id);
     if (!budget) {
       return res.status(404).json({
         success: false,
@@ -151,7 +151,7 @@ router.put('/:id', [
       });
     }
 
-    const updatedBudget = Budget.update(req.params.id, req.body);
+    const updatedBudget = await Budget.update(req.params.id, req.body);
 
     res.json({
       success: true,
@@ -170,9 +170,9 @@ router.put('/:id', [
 // @route   DELETE /api/budgets/:id
 // @desc    Delete budget
 // @access  Private
-router.delete('/:id', protect, (req, res) => {
+router.delete('/:id(\\d+)', protect, async (req, res) => {
   try {
-    const budget = Budget.findById(req.params.id);
+    const budget = await Budget.findById(req.params.id);
     if (!budget) {
       return res.status(404).json({
         success: false,
@@ -188,7 +188,7 @@ router.delete('/:id', protect, (req, res) => {
       });
     }
 
-    Budget.delete(req.params.id);
+    await Budget.delete(req.params.id);
 
     res.json({
       success: true,
@@ -206,9 +206,9 @@ router.delete('/:id', protect, (req, res) => {
 // @route   GET /api/budgets/alerts/unread
 // @desc    Get unread budget alerts
 // @access  Private
-router.get('/alerts/unread', protect, (req, res) => {
+router.get('/alerts/unread', protect, async (req, res) => {
   try {
-    const alerts = Budget.getUnreadAlerts(req.user.id);
+    const alerts = await Budget.getUnreadAlerts(req.user.id);
 
     res.json({
       success: true,
@@ -227,9 +227,9 @@ router.get('/alerts/unread', protect, (req, res) => {
 // @route   PUT /api/budgets/alerts/:alertId/dismiss
 // @desc    Dismiss budget alert
 // @access  Private
-router.put('/alerts/:alertId/dismiss', protect, (req, res) => {
+router.put('/alerts/:alertId/dismiss', protect, async (req, res) => {
   try {
-    Budget.dismissAlert(req.params.alertId);
+    await Budget.dismissAlert(req.params.alertId);
 
     res.json({
       success: true,

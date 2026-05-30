@@ -29,7 +29,7 @@ router.post('/register', [
     const { name, email, password } = req.body;
 
     // Check if user exists
-    const userExists = User.findByEmail(email);
+    const userExists = await User.findByEmail(email);
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -38,7 +38,7 @@ router.post('/register', [
     }
 
     // Create user
-    const user = User.create({ name, email, password });
+    const user = await User.create({ name, email, password });
 
     // Create default categories for the user
     const defaultIncomeCategories = [
@@ -59,8 +59,10 @@ router.post('/register', [
       { name: 'Other Expenses', type: 'expense', user_id: user.id, color: '#6B7280', icon: 'minus-circle', is_default: true }
     ];
 
-    defaultIncomeCategories.forEach(cat => Category.create(cat));
-    defaultExpenseCategories.forEach(cat => Category.create(cat));
+    await Promise.all([
+      ...defaultIncomeCategories.map(cat => Category.create(cat)),
+      ...defaultExpenseCategories.map(cat => Category.create(cat))
+    ]);
 
     res.status(201).json({
       success: true,
@@ -97,7 +99,7 @@ router.post('/login', [
     const { email, password } = req.body;
 
     // Check if user exists
-    const user = User.findByEmail(email);
+    const user = await User.findByEmail(email);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -138,7 +140,7 @@ router.post('/login', [
 // @access  Private
 router.get('/me', require('../middleware/auth').protect, async (req, res) => {
   try {
-    const user = User.findById(req.user.id);
+    const user = await User.findById(req.user.id);
     res.json({
       success: true,
       user: {
@@ -188,7 +190,7 @@ router.put('/profile', require('../middleware/auth').protect, [
     }
 
     const { name } = req.body;
-    const user = User.updateName(req.user.id, name);
+    const user = await User.updateName(req.user.id, name);
 
     res.json({
       success: true,
@@ -222,7 +224,7 @@ router.put('/password', require('../middleware/auth').protect, [
     }
 
     const { currentPassword, newPassword } = req.body;
-    const user = User.findByEmail(req.user.email);
+    const user = await User.findByEmail(req.user.email);
 
     if (!user) {
       return res.status(404).json({
@@ -239,7 +241,7 @@ router.put('/password', require('../middleware/auth').protect, [
       });
     }
 
-    User.updatePassword(req.user.id, newPassword);
+    await User.updatePassword(req.user.id, newPassword);
 
     res.json({
       success: true,

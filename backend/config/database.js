@@ -1,19 +1,38 @@
+const path = require('path');
 const { Pool } = require('pg');
+const { PGlite } = require('@electric-sql/pglite');
 
 let pool;
+let usingEmbeddedDatabase = false;
 
-// Initialize database
-const initDatabase = async () => {
+const shouldUseEmbeddedDatabase = () => {
+  return process.env.NODE_ENV !== 'production' && !process.env.DATABASE_URL;
+};
+
+const createDatabaseClient = () => {
+  if (shouldUseEmbeddedDatabase()) {
+    usingEmbeddedDatabase = true;
+    const dataDir = process.env.PGLITE_DATA_DIR || path.join(__dirname, '..', '.pglite');
+    return new PGlite(dataDir);
+  }
+
   const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/expense_tracker';
-  
-  pool = new Pool({
+
+  return new Pool({
     connectionString: connectionString,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
   });
+};
+
+// Initialize database
+const initDatabase = async () => {
+  pool = createDatabaseClient();
 
   try {
     await pool.query('SELECT NOW()');
-    console.log('Database connected successfully');
+    console.log(usingEmbeddedDatabase
+      ? 'Embedded development database connected successfully'
+      : 'Database connected successfully');
     await createTables();
     return pool;
   } catch (error) {

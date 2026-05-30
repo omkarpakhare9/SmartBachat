@@ -16,9 +16,9 @@ const serializeUser = (user) => ({
 // @route   GET /api/profile
 // @desc    Get current user profile
 // @access  Private
-router.get('/', protect, (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
-    const user = User.findById(req.user.id);
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -47,7 +47,7 @@ router.put('/', [
   body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
   body('email').optional().isEmail().withMessage('Please provide a valid email'),
   body('preferredCurrency').optional().isLength({ min: 3, max: 3 }).withMessage('Preferred currency must be an ISO code')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -58,7 +58,7 @@ router.put('/', [
 
     // Check if email is already taken by another user
     if (email) {
-      const existingUser = User.findByEmail(email);
+      const existingUser = await User.findByEmail(email);
       if (existingUser && existingUser.id !== req.user.id) {
         return res.status(400).json({
           success: false,
@@ -67,25 +67,25 @@ router.put('/', [
       }
     }
 
-    let updatedUser = User.findById(req.user.id);
+    let updatedUser = await User.findById(req.user.id);
 
     if (name) {
-      updatedUser = User.updateName(req.user.id, name);
+      updatedUser = await User.updateName(req.user.id, name);
     }
 
     if (email) {
-      updatedUser = User.updateEmail(req.user.id, email);
+      updatedUser = await User.updateEmail(req.user.id, email);
     }
 
     if (preferredCurrency) {
       const code = Currency.normalizeCode(preferredCurrency);
-      if (!Currency.findByCode(code)) {
+      if (!(await Currency.findByCode(code))) {
         return res.status(400).json({
           success: false,
           message: 'Unsupported currency'
         });
       }
-      updatedUser = User.updateCurrency(req.user.id, code);
+      updatedUser = await User.updateCurrency(req.user.id, code);
     }
 
     res.json({
@@ -115,7 +115,7 @@ router.put('/password', [
     }
     return true;
   })
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -124,7 +124,7 @@ router.put('/password', [
 
     const { currentPassword, newPassword } = req.body;
 
-    const user = User.findById(req.user.id);
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -142,7 +142,7 @@ router.put('/password', [
     }
 
     // Update password
-    User.updatePassword(req.user.id, newPassword);
+    await User.updatePassword(req.user.id, newPassword);
 
     res.json({
       success: true,

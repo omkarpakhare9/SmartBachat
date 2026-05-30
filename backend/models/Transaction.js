@@ -85,7 +85,7 @@ class Transaction {
     const result = await pool.query(query, params);
     
     const user = await User.findById(userId);
-    return result.rows.map(row => this.formatTransaction(row, user?.preferredCurrency));
+    return Promise.all(result.rows.map(row => this.formatTransaction(row, user?.preferredCurrency)));
   }
 
   static async countByUser(userId, filters = {}) {
@@ -149,8 +149,8 @@ class Transaction {
     await pool.query('DELETE FROM transactions WHERE id = $1', [id]);
   }
 
-  static formatTransaction(row, preferredCurrency = null) {
-    const display = Currency.withDisplayAmount(row.amount, preferredCurrency || 'USD');
+  static async formatTransaction(row, preferredCurrency = null) {
+    const display = await Currency.withDisplayAmount(row.amount, preferredCurrency || 'USD');
     return {
       id: row.id,
       _id: row.id,

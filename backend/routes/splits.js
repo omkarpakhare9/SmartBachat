@@ -11,7 +11,7 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const splits = Split.findByCreatedBy(req.user.id);
+    const splits = await Split.findByCreatedBy(req.user.id);
 
     res.json({
       success: true,
@@ -44,7 +44,7 @@ router.post('/', protect, [
     const { transaction, participants, splitType, notes } = req.body;
 
     // Verify transaction exists and belongs to user
-    const transactionDoc = Transaction.findById(transaction);
+    const transactionDoc = await Transaction.findById(transaction);
 
     if (!transactionDoc || transactionDoc.user !== req.user.id) {
       return res.status(404).json({
@@ -93,8 +93,8 @@ router.post('/', protect, [
       }));
     }
 
-    const user = User.findById(req.user.id);
-    const split = Split.create({
+    const user = await User.findById(req.user.id);
+    const split = await Split.create({
       transaction_id: transaction,
       created_by: req.user.id,
       total_amount: totalAmount,
@@ -104,11 +104,11 @@ router.post('/', protect, [
     });
 
     // Mark transaction as split
-    Transaction.update(transaction, { is_split: true });
+    await Transaction.update(transaction, { is_split: true });
 
     res.status(201).json({
       success: true,
-      data: Split.findById(split._id, user?.preferredCurrency)
+      data: await Split.findById(split._id, user?.preferredCurrency)
     });
   } catch (error) {
     console.error(error);
@@ -124,8 +124,8 @@ router.post('/', protect, [
 // @access  Private
 router.put('/:id/participants/:participantId', protect, async (req, res) => {
   try {
-    const user = User.findById(req.user.id);
-    const split = Split.findById(req.params.id, user?.preferredCurrency);
+    const user = await User.findById(req.user.id);
+    const split = await Split.findById(req.params.id, user?.preferredCurrency);
 
     if (!split || split.createdBy !== req.user.id) {
       return res.status(404).json({
@@ -134,11 +134,11 @@ router.put('/:id/participants/:participantId', protect, async (req, res) => {
       });
     }
 
-    Split.updateParticipantPaid(req.params.id, req.params.participantId);
+    await Split.updateParticipantPaid(req.params.id, req.params.participantId);
 
     res.json({
       success: true,
-      data: Split.findById(req.params.id, user?.preferredCurrency)
+      data: await Split.findById(req.params.id, user?.preferredCurrency)
     });
   } catch (error) {
     console.error(error);

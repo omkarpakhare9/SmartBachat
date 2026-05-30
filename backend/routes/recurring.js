@@ -8,7 +8,7 @@ const { protect } = require('../middleware/auth');
 // @route   GET /api/recurring
 // @desc    Get all recurring transactions for current user
 // @access  Private
-router.get('/', protect, (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const { active } = req.query;
     let isActive = null;
@@ -16,7 +16,7 @@ router.get('/', protect, (req, res) => {
       isActive = active === 'true' ? 1 : 0;
     }
 
-    const recurringTransactions = RecurringTransaction.findByUser(req.user.id, isActive);
+    const recurringTransactions = await RecurringTransaction.findByUser(req.user.id, isActive);
 
     res.json({
       success: true,
@@ -34,9 +34,9 @@ router.get('/', protect, (req, res) => {
 // @route   GET /api/recurring/:id
 // @desc    Get recurring transaction by ID
 // @access  Private
-router.get('/:id', protect, (req, res) => {
+router.get('/:id(\\d+)', protect, async (req, res) => {
   try {
-    const recurring = RecurringTransaction.findById(req.params.id);
+    const recurring = await RecurringTransaction.findById(req.params.id);
 
     if (!recurring) {
       return res.status(404).json({
@@ -54,7 +54,7 @@ router.get('/:id', protect, (req, res) => {
     }
 
     // Get instances
-    const instances = RecurringTransaction.getInstances(req.params.id);
+    const instances = await RecurringTransaction.getInstances(req.params.id);
 
     res.json({
       success: true,
@@ -81,7 +81,7 @@ router.post('/', [
   body('frequency').isIn(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']).withMessage('Invalid frequency'),
   body('start_date').isISO8601().withMessage('Start date must be valid'),
   body('end_date').optional().isISO8601().withMessage('End date must be valid')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -101,8 +101,8 @@ router.post('/', [
     } = req.body;
 
     // Verify category exists and belongs to user
-    const category = Category.findById(category_id);
-    if (!category || category.user_id !== req.user.id) {
+    const category = await Category.findById(category_id);
+    if (!category || category.user !== req.user.id) {
       return res.status(404).json({
         success: false,
         message: 'Category not found'
@@ -124,7 +124,7 @@ router.post('/', [
       });
     }
 
-    const recurring = RecurringTransaction.create({
+    const recurring = await RecurringTransaction.create({
       user_id: req.user.id,
       category_id,
       type,
@@ -154,19 +154,19 @@ router.post('/', [
 // @route   PUT /api/recurring/:id
 // @desc    Update recurring transaction
 // @access  Private
-router.put('/:id', [
+router.put('/:id(\\d+)', [
   protect,
   body('amount').optional().isFloat({ min: 0 }).withMessage('Amount must be a positive number'),
   body('end_date').optional().isISO8601().withMessage('End date must be valid'),
   body('is_active').optional().isBoolean().withMessage('is_active must be boolean')
-], (req, res) => {
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const recurring = RecurringTransaction.findById(req.params.id);
+    const recurring = await RecurringTransaction.findById(req.params.id);
     if (!recurring) {
       return res.status(404).json({
         success: false,
@@ -182,7 +182,7 @@ router.put('/:id', [
       });
     }
 
-    const updatedRecurring = RecurringTransaction.update(req.params.id, {
+    const updatedRecurring = await RecurringTransaction.update(req.params.id, {
       amount: req.body.amount,
       description: req.body.description,
       end_date: req.body.end_date ? req.body.end_date.split('T')[0] : undefined,
@@ -208,9 +208,9 @@ router.put('/:id', [
 // @route   DELETE /api/recurring/:id
 // @desc    Delete recurring transaction
 // @access  Private
-router.delete('/:id', protect, (req, res) => {
+router.delete('/:id(\\d+)', protect, async (req, res) => {
   try {
-    const recurring = RecurringTransaction.findById(req.params.id);
+    const recurring = await RecurringTransaction.findById(req.params.id);
     if (!recurring) {
       return res.status(404).json({
         success: false,
@@ -226,7 +226,7 @@ router.delete('/:id', protect, (req, res) => {
       });
     }
 
-    RecurringTransaction.delete(req.params.id);
+    await RecurringTransaction.delete(req.params.id);
 
     res.json({
       success: true,
@@ -244,10 +244,10 @@ router.delete('/:id', protect, (req, res) => {
 // @route   POST /api/recurring/process/run
 // @desc    Process recurring transactions (for scheduler)
 // @access  Public (should be called by a cron job or scheduler)
-router.post('/process/run', (req, res) => {
+router.post('/process/run', async (req, res) => {
   try {
     // In production, this should be secured with a shared secret
-    const count = RecurringTransaction.processRecurring();
+    const count = await RecurringTransaction.processRecurring();
 
     res.json({
       success: true,
