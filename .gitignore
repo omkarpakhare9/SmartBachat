@@ -13,6 +13,7 @@ yarn-error.log*
 *.db
 *.db-shm
 *.db-wal
+backend/.pglite/
 
 # Build outputs
 dist/
@@ -35,6 +36,31 @@ Thumbs.db
 flutter/
 expense_tracker_app/
 flutter_expense/
+smart_bachat_mobile/.dart_tool/
+smart_bachat_mobile/.flutter-plugins
+smart_bachat_mobile/.flutter-plugins-dependencies
+smart_bachat_mobile/.packages
+smart_bachat_mobile/.pub-cache/
+smart_bachat_mobile/.pub/
+smart_bachat_mobile/build/
+smart_bachat_mobile/android/.gradle/
+smart_bachat_mobile/android/captures/
+smart_bachat_mobile/android/gradlew
+smart_bachat_mobile/android/gradlew.bat
+smart_bachat_mobile/android/local.properties
+smart_bachat_mobile/android/**/GeneratedPluginRegistrant.java
+smart_bachat_mobile/ios/.symlinks/
+smart_bachat_mobile/ios/Flutter/.last_build_id
+smart_bachat_mobile/ios/Flutter/App.framework
+smart_bachat_mobile/ios/Flutter/Flutter.framework
+smart_bachat_mobile/ios/Flutter/Flutter.podspec
+smart_bachat_mobile/ios/Flutter/Generated.xcconfig
+smart_bachat_mobile/ios/Flutter/app.flx
+smart_bachat_mobile/ios/Flutter/app.zip
+smart_bachat_mobile/ios/Flutter/flutter_assets/
+smart_bachat_mobile/ios/Flutter/flutter_export_environment.sh
+smart_bachat_mobile/ios/ServiceDefinitions.json
+smart_bachat_mobile/ios/Runner/GeneratedPluginRegistrant.*
 
 # Logs
 logs/
