@@ -1,9 +1,18 @@
+import 'dart:io';
+
 class AppConfig {
   // API Configuration
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5000/api',
-  );
+  static String get baseUrl {
+    const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (envUrl.isNotEmpty) return envUrl;
+    
+    // Default based on platform
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:5000/api'; // Android emulator
+    } else {
+      return 'http://localhost:5000/api'; // Web, iOS, desktop
+    }
+  }
   
   static const String apiVersion = '/v1';
   

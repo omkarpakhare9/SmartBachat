@@ -113,7 +113,7 @@ const Budgets = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold">Budget Management</h2>
         <Button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({ category_id: '', amount: '', period: 'monthly', alert_threshold: 80, alert_enabled: true }); }}>
           <Plus className="w-4 h-4 mr-2" />
@@ -190,7 +190,7 @@ const Budgets = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 min-w-0 flex-1">
                   <input
                     type="checkbox"
                     checked={formData.alert_enabled}
@@ -200,7 +200,7 @@ const Budgets = () => {
                 </label>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={loading}>
                   {loading ? 'Saving...' : editingId ? 'Update Budget' : 'Create Budget'}
                 </Button>
@@ -222,7 +222,7 @@ const Budgets = () => {
       )}
 
       {/* Period Filter */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {['weekly', 'monthly', 'yearly'].map(period => (
           <Button
             key={period}
@@ -241,18 +241,18 @@ const Budgets = () => {
             <CardContent className="pt-6">
               <div className="space-y-4">
                 {/* Category Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div 
-                      className="w-8 h-8 rounded-full"
+                      className="w-8 h-8 rounded-full flex-shrink-0"
                       style={{ backgroundColor: budget.color }}
                     />
-                    <div>
-                      <p className="font-semibold">{budget.category_name}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{budget.category_name}</p>
                       <p className="text-sm text-muted-foreground">{budget.period}</p>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button
                       size="sm"
                       variant="outline"
@@ -297,14 +297,14 @@ const Budgets = () => {
 
                 {/* Status */}
                 {budget.isAlert && (
-                  <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded text-yellow-800 text-sm">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 p-2 bg-yellow-50 rounded text-yellow-800 text-sm">
                     <AlertCircle className="w-4 h-4" />
                     Approaching limit
                   </div>
                 )}
 
                 {budget.isExceeded && (
-                  <div className="flex items-center gap-2 p-2 bg-red-50 rounded text-red-800 text-sm">
+                  <div className="flex items-center gap-2 min-w-0 flex-1 p-2 bg-red-50 rounded text-red-800 text-sm">
                     <AlertCircle className="w-4 h-4" />
                     Budget exceeded
                   </div>

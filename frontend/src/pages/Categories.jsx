@@ -91,7 +91,7 @@ const Categories = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold">Categories</h2>
         <Button onClick={() => { setShowForm(!showForm); setEditingCategory(null); setFormData({ name: '', type: 'expense', color: '#3B82F6', icon: 'circle' }) }}>
           <Plus className="w-4 h-4 mr-2" />
@@ -158,20 +158,20 @@ const Categories = () => {
               <div className="space-y-3">
                 {incomeCategories.map((category) => (
                   <div key={category._id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
                         style={{ backgroundColor: category.color }}
                       >
                         {category.name[0]}
                       </div>
-                      <div>
-                        <p className="font-medium">{category.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{category.name}</p>
                         {category.isDefault && <p className="text-xs text-muted-foreground">Default</p>}
                       </div>
                     </div>
                     {!category.isDefault && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-shrink-0">
                         <Button size="icon" variant="ghost" onClick={() => handleEdit(category)}>
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -199,20 +199,20 @@ const Categories = () => {
               <div className="space-y-3">
                 {expenseCategories.map((category) => (
                   <div key={category._id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
                         style={{ backgroundColor: category.color }}
                       >
                         {category.name[0]}
                       </div>
-                      <div>
-                        <p className="font-medium">{category.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{category.name}</p>
                         {category.isDefault && <p className="text-xs text-muted-foreground">Default</p>}
                       </div>
                     </div>
                     {!category.isDefault && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-shrink-0">
                         <Button size="icon" variant="ghost" onClick={() => handleEdit(category)}>
                           <Edit className="w-4 h-4" />
                         </Button>

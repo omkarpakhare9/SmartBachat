@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -12,7 +12,9 @@ import {
   LogOut,
   Moon,
   Sun,
-  Target
+  Target,
+  Menu,
+  X
 } from 'lucide-react'
 import Button from './ui/Button'
 
@@ -21,6 +23,7 @@ const Layout = () => {
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -49,8 +52,22 @@ const Layout = () => {
 
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Mobile menu button */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </Button>
+      </div>
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card">
+      <aside className={cn(
+        'fixed lg:static inset-y-0 left-0 z-40 w-64 border-r border-border bg-card transform transition-transform duration-300 ease-in-out',
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      )}>
         <div className="p-6">
           <h1 className="text-2xl font-bold text-primary">SmartBachat</h1>
         </div>
@@ -61,7 +78,10 @@ const Layout = () => {
             return (
               <button
                 key={item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  navigate(item.path)
+                  setMobileMenuOpen(false)
+                }}
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition-colors',
                   isActive 
@@ -95,15 +115,23 @@ const Layout = () => {
         </div>
       </aside>
 
+      {/* Overlay for mobile */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <header className="border-b border-border bg-card px-6 py-4">
+      <main className="flex-1 overflow-auto lg:ml-0">
+        <header className="border-b border-border bg-card px-6 py-4 pl-16 lg:pl-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold capitalize">
               {location.pathname.split('/')[1] || 'Dashboard'}
             </h2>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground hidden sm:inline">
                 Welcome, {user.name}
               </span>
             </div>

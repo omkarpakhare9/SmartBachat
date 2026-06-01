@@ -13,7 +13,13 @@ const createDatabaseClient = () => {
   if (shouldUseEmbeddedDatabase()) {
     usingEmbeddedDatabase = true;
     const dataDir = process.env.PGLITE_DATA_DIR || path.join(__dirname, '..', '.pglite');
-    return new PGlite(dataDir);
+    console.log('Using embedded PGlite database at:', dataDir);
+    try {
+      return new PGlite(dataDir);
+    } catch (error) {
+      console.error('Failed to initialize PGlite:', error);
+      throw new Error('Embedded database initialization failed. Please ensure the directory is writable and not locked by another process.');
+    }
   }
 
   const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/expense_tracker';

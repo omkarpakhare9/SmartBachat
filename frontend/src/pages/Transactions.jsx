@@ -219,22 +219,22 @@ const Transactions = () => {
           {transactions.length > 0 ? (
             <div className="space-y-4">
               {transactions.map((transaction) => (
-                <div key={transaction._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center gap-4">
+                <div key={transaction._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors gap-3">
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
                     <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold"
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
                       style={{ backgroundColor: transaction.category?.color }}
                     >
                       {transaction.category?.name?.[0] || 'T'}
                     </div>
-                    <div>
-                      <p className="font-medium">{transaction.description || transaction.category?.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{transaction.description || transaction.category?.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {transaction.category?.name} • {formatDate(transaction.date)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between w-full sm:w-auto gap-4">
                     <p className={`text-lg font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.displayAmount ?? transaction.amount, transaction.displayCurrency)}
                     </p>

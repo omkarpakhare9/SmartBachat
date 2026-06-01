@@ -15,7 +15,7 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router basename="/SmartBachat">
+        <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

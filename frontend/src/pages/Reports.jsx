@@ -242,16 +242,16 @@ const Reports = () => {
           {transactions.length > 0 ? (
             <div className="space-y-4">
               {transactions.map((transaction) => (
-                <div key={transaction._id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
+                <div key={transaction._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-3">
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
                     <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
                       style={{ backgroundColor: transaction.category?.color }}
                     >
                       {transaction.category?.name?.[0] || 'T'}
                     </div>
-                    <div>
-                      <p className="font-medium">{transaction.description || transaction.category?.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{transaction.description || transaction.category?.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {transaction.category?.name} • {formatDate(transaction.date)}
                       </p>
@@ -270,12 +270,12 @@ const Reports = () => {
           )}
         </CardContent>
         <CardFooter>
-          <div className="flex gap-2">
-            <Button onClick={exportToCsv} variant="outline">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button onClick={exportToCsv} variant="outline" className="w-full sm:w-auto">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
-            <Button onClick={exportToPDF} variant="outline">
+            <Button onClick={exportToPDF} variant="outline" className="w-full sm:w-auto">
               <FileText className="w-4 h-4 mr-2" />
               Export PDF
             </Button>
