@@ -64,8 +64,16 @@ class Currency {
 
   static async convert(amount, fromCode = DEFAULT_BASE_CURRENCY, toCode = DEFAULT_BASE_CURRENCY) {
     const value = Number(amount || 0);
-    const from = await this.findByCode(fromCode);
-    const to = await this.findByCode(toCode);
+    const fromCodeNormalized = this.normalizeCode(fromCode);
+    const toCodeNormalized = this.normalizeCode(toCode);
+
+    // If currencies are the same, return original amount
+    if (fromCodeNormalized === toCodeNormalized) {
+      return value;
+    }
+
+    const from = await this.findByCode(fromCodeNormalized);
+    const to = await this.findByCode(toCodeNormalized);
 
     if (!from || !to) {
       return value;

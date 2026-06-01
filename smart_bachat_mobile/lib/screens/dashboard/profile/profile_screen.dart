@@ -1,9 +1,118 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/auth_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class ProfileScreen extends StatelessWidget {
+import '../../../providers/auth_provider.dart';
+import '../../../services/api_service.dart';
+import '../../../models/user.dart';
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _apiService = ApiService();
+  bool _notificationsEnabled = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notification_enabled') ?? true;
+    });
+  }
+
+  Future<void> _saveNotifications(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notification_enabled', enabled);
+    setState(() {
+      _notificationsEnabled = enabled;
+    });
+  }
+
+  Future<void> _showEditProfileDialog(AuthProvider authProvider) async {
+    final nameController = TextEditingController(text: authProvider.user?.name ?? '');
+    final emailController = TextEditingController(text: authProvider.user?.email ?? '');
+    final currencyController = TextEditingController(text: authProvider.user?.currency ?? 'USD');
+
+    final formKey = GlobalKey<FormState>();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
+              ),
+              TextFormField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) => value == null || value.isEmpty ? 'Email is required' : null,
+              ),
+              TextFormField(
+                controller: currencyController,
+                decoration: const InputDecoration(labelText: 'Currency (USD, INR, EUR)'),
+                textCapitalization: TextCapitalization.characters,
+                validator: (value) => value == null || value.length != 3 ? 'Enter 3-letter code' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final body = {
+                'name': nameController.text.trim(),
+                'email': emailController.text.trim(),
+                'currency': currencyController.text.trim().toUpperCase(),
+              };
+              try {
+                final response = await _apiService.put('/profile', body: body);
+                if (response.statusCode == 200) {
+                  final data = response.body.isNotEmpty ? response.body : '{}';
+                  final userJson = data.contains('user') ? Map<String, dynamic>.from(jsonDecode(data)['user']) : null;
+                  if (userJson != null) {
+                    authProvider.updateUser(User.fromJson(userJson));
+                  }
+                  Navigator.pop(context, true);
+                } else {
+                  final message = (response.body.isNotEmpty ? jsonDecode(response.body)['message'] : null) ?? 'Failed to update profile';
+                  setState(() => _error = message);
+                }
+              } catch (e) {
+                setState(() => _error = 'Failed to update profile: $e');
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,25 +158,16 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
+          if (_error != null) ...[
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+          ],
           Card(
             child: ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Edit Profile'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                // Navigate to edit profile
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.lock),
-              title: const Text('Change Password'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                // Navigate to change password
-              },
+              onTap: () => _showEditProfileDialog(authProvider),
             ),
           ),
           const SizedBox(height: 8),
@@ -75,21 +175,18 @@ class ProfileScreen extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.attach_money),
               title: const Text('Currency Preference'),
+              subtitle: Text(authProvider.user?.currency ?? 'USD'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                // Navigate to currency preference
-              },
+              onTap: () => _showEditProfileDialog(authProvider),
             ),
           ),
           const SizedBox(height: 8),
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.notifications),
+            child: SwitchListTile(
               title: const Text('Notification Settings'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                // Navigate to notification settings
-              },
+              value: _notificationsEnabled,
+              secondary: const Icon(Icons.notifications),
+              onChanged: (value) => _saveNotifications(value),
             ),
           ),
           const SizedBox(height: 24),

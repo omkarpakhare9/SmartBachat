@@ -91,6 +91,11 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void updateUser(User user) {
+    _user = user;
+    notifyListeners();
+  }
+
   Future<bool> checkAuth() async {
     await _apiService.init();
     

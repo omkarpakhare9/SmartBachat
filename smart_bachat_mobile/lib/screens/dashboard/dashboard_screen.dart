@@ -5,6 +5,7 @@ import 'transactions/transactions_screen.dart';
 import 'budgets/budgets_screen.dart';
 import 'reports/reports_screen.dart';
 import 'profile/profile_screen.dart';
+import 'splits/splits_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -185,7 +186,10 @@ class HomeTab extends StatelessWidget {
                   'Add Transaction',
                   Icons.add_circle,
                   () {
-                    // Navigate to add transaction
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+                    );
                   },
                 ),
                 _buildQuickAction(
@@ -193,7 +197,10 @@ class HomeTab extends StatelessWidget {
                   'Set Budget',
                   Icons.savings,
                   () {
-                    // Navigate to set budget
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const BudgetsScreen()),
+                    );
                   },
                 ),
                 _buildQuickAction(
@@ -201,15 +208,21 @@ class HomeTab extends StatelessWidget {
                   'View Reports',
                   Icons.analytics,
                   () {
-                    // Navigate to reports
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                    );
                   },
                 ),
                 _buildQuickAction(
                   context,
-                  'Categories',
-                  Icons.category,
+                  'Split Expense',
+                  Icons.group,
                   () {
-                    // Navigate to categories
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SplitsScreen()),
+                    );
                   },
                 ),
               ],

@@ -3,7 +3,11 @@ import 'package:provider/provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'providers/auth_provider.dart';
-import 'config/app_config.dart';
+import 'providers/category_provider.dart';
+import 'providers/transaction_provider.dart';
+import 'providers/budget_provider.dart';
+import 'providers/report_provider.dart';
+import 'providers/split_provider.dart';
 
 void main() {
   runApp(const SmartBachatApp());
@@ -17,6 +21,11 @@ class SmartBachatApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()),
+        ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider(create: (_) => SplitProvider()),
       ],
       child: MaterialApp(
         title: 'SmartBachat',

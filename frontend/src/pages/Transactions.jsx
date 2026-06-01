@@ -22,6 +22,7 @@ const Transactions = () => {
     description: '',
     date: new Date().toISOString().split('T')[0]
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     fetchTransactions()
@@ -54,6 +55,7 @@ const Transactions = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setIsSubmitting(true)
     try {
       if (editingTransaction) {
         await api.put(`/transactions/${editingTransaction._id}`, formData)
@@ -72,6 +74,9 @@ const Transactions = () => {
       fetchTransactions()
     } catch (error) {
       console.error('Error saving transaction:', error)
+      alert('Error saving transaction. Please try again.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -90,7 +95,7 @@ const Transactions = () => {
     setEditingTransaction(transaction)
     setFormData({
       type: transaction.type,
-      amount: transaction.amount,
+      amount: transaction.amount, // Use original amount, not displayAmount
       category: transaction.category._id,
       description: transaction.description,
       date: transaction.date.split('T')[0]
@@ -202,8 +207,10 @@ const Transactions = () => {
                 />
               </div>
               <div className="flex gap-2 md:col-span-2">
-                <Button type="submit">{editingTransaction ? 'Update' : 'Add'} Transaction</Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : (editingTransaction ? 'Update' : 'Add') + ' Transaction'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowForm(false)} disabled={isSubmitting}>Cancel</Button>
               </div>
             </form>
           </CardContent>
