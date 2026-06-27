@@ -6,7 +6,7 @@ let pool;
 let usingEmbeddedDatabase = false;
 
 const shouldUseEmbeddedDatabase = () => {
-  return process.env.NODE_ENV !== 'production' && !process.env.DATABASE_URL;
+  return !process.env.DATABASE_URL;
 };
 
 const createDatabaseClient = () => {
