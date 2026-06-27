@@ -1,5 +1,0 @@
-__pycache__/
-*.pyc
-.venv/
-fitness.db
-.pytest_cache/
