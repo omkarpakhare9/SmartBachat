@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../providers/report_provider.dart';
+import '../../../theme/app_theme.dart';
+import '../../../widgets/money_decorations.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -26,23 +28,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
-  Widget _buildSummaryCard(String label, String value, Color color) {
+  Widget _buildSummaryCard(String label, String value, Gradient gradient,
+      IconData icon) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(value, style: TextStyle(fontSize: 18, color: color, fontWeight: FontWeight.bold)),
-          ],
-        ),
+      child: GradientStatCard(
+        title: label,
+        amount: value,
+        icon: icon,
+        gradient: gradient,
       ),
     );
   }
@@ -55,29 +48,47 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final monthly = reportProvider.monthlyTrends;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reports'),
-      ),
-      body: reportProvider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : reportProvider.error != null
-              ? Center(child: Text(reportProvider.error!))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+      appBar: const GradientAppBar(title: 'Reports'),
+      body: MoneyBackground(
+        showCoins: false,
+        child: reportProvider.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : reportProvider.error != null
+                ? Center(child: Text(reportProvider.error!))
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                       Row(
                         children: [
-                          _buildSummaryCard('Income', '₹ ${summary['displayIncome'] ?? '0.00'}', Colors.green),
+                          _buildSummaryCard(
+                              'Income',
+                              '₹ ${summary['displayIncome'] ?? '0.00'}',
+                              AppColors.incomeGradient,
+                              Icons.trending_up),
                           const SizedBox(width: 12),
-                          _buildSummaryCard('Expense', '₹ ${summary['displayExpense'] ?? '0.00'}', Colors.red),
+                          _buildSummaryCard(
+                              'Expense',
+                              '₹ ${summary['displayExpense'] ?? '0.00'}',
+                              AppColors.expenseGradient,
+                              Icons.trending_down),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      _buildSummaryCard('Balance', '₹ ${summary['displayBalance'] ?? '0.00'}', Colors.blue),
+                      GradientStatCard(
+                        title: 'Balance',
+                        amount:
+                            '₹ ${summary['displayBalance'] ?? '0.00'}',
+                        icon: Icons.account_balance,
+                        gradient: AppColors.balanceGradient,
+                      ),
                       const SizedBox(height: 24),
-                      Text('Category Breakdown', style: Theme.of(context).textTheme.titleLarge),
+                      const Text('Category Breakdown',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary)),
                       const SizedBox(height: 12),
                       if (categoryData.isEmpty)
                         const Text('No category data available yet.')
@@ -156,9 +167,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             ),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import 'providers/transaction_provider.dart';
 import 'providers/budget_provider.dart';
 import 'providers/report_provider.dart';
 import 'providers/split_provider.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const SmartBachatApp());
@@ -30,18 +31,7 @@ class SmartBachatApp extends StatelessWidget {
       child: MaterialApp(
         title: 'SmartBachat',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF4CAF50),
-            primary: const Color(0xFF4CAF50),
-            secondary: const Color(0xFF2E7D32),
-          ),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 0,
-          ),
-        ),
+        theme: AppTheme.light,
         home: const AuthWrapper(),
       ),
     );
@@ -77,9 +67,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isChecking) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+          child: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
         ),
       );
     }
