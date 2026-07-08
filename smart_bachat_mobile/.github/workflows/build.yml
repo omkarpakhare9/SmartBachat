@@ -5,6 +5,10 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+defaults:
+  run:
+    working-directory: smart_bachat_mobile
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,4 +23,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: smart_bachat_mobile/build/app/outputs/flutter-apk/app-release.apk
