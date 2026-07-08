@@ -14,12 +14,24 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    DateTime parsedCreatedAt;
+    final rawCreatedAt = json['createdAt'];
+    if (rawCreatedAt == null) {
+      parsedCreatedAt = DateTime.now();
+    } else if (rawCreatedAt is String) {
+      parsedCreatedAt = DateTime.tryParse(rawCreatedAt) ?? DateTime.now();
+    } else if (rawCreatedAt is int) {
+      parsedCreatedAt = DateTime.fromMillisecondsSinceEpoch(rawCreatedAt);
+    } else {
+      parsedCreatedAt = DateTime.now();
+    }
+
     return User(
       id: (json['_id'] ?? json['id']).toString(),
-      email: json['email'],
-      name: json['name'],
-      currency: json['currency'],
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      email: json['email']?.toString() ?? '',
+      name: json['name']?.toString(),
+      currency: json['currency']?.toString(),
+      createdAt: parsedCreatedAt,
     );
   }
 
