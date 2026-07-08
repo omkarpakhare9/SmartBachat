@@ -13,7 +13,7 @@ on:
       api_base_url:
         description: 'Backend API base URL (e.g. https://my-backend.onrender.com/api)'
         required: false
-        default: 'https://smartbachat.onrender.com/api'
+        default: 'https://smart-bachat-api-oavc.onrender.com/api'
 
 jobs:
   build:
@@ -51,7 +51,7 @@ jobs:
       - name: Build release APK
         run: |
           flutter build apk --release \
-            --dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url || 'https://smartbachat.onrender.com/api' }}
+            --dart-define=API_BASE_URL=${{ github.event.inputs.api_base_url || 'https://smart-bachat-api-oavc.onrender.com/api' }}
 
       - name: Rename APK
         run: |

@@ -8,9 +8,9 @@ class AppConfig {
     
     // Default based on platform
     if (Platform.isAndroid) {
-      return 'https://smartbachat.onrender.com/api'; // Android emulator
+      return 'https://smart-bachat-api-oavc.onrender.com/api'; // Android emulator
     } else {
-      return 'https://smartbachat.onrender.com/api'; // Web, iOS, desktop
+      return 'https://smart-bachat-api-oavc.onrender.com/api'; // Web, iOS, desktop
     }
   }
   
