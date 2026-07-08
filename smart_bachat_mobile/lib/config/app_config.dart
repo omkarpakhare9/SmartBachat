@@ -8,9 +8,9 @@ class AppConfig {
     
     // Default based on platform
     if (Platform.isAndroid) {
-      return 'http://10.0.2.2:5000/api'; // Android emulator
+      return 'https://smartbachat.onrender.com/api'; // Android emulator
     } else {
-      return 'http://localhost:5000/api'; // Web, iOS, desktop
+      return 'https://smartbachat.onrender.com/api'; // Web, iOS, desktop
     }
   }
   
