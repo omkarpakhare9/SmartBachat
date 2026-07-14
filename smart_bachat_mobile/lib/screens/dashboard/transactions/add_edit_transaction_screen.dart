@@ -165,9 +165,20 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _categoryId,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Category',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  helperText: categoryProvider.isLoading
+                      ? 'Loading categories...'
+                      : (categories.isEmpty
+                          ? (categoryProvider.error ??
+                              'No $_type categories yet. Log out and back in to seed defaults.')
+                          : null),
+                  helperStyle: TextStyle(
+                    color: categories.isEmpty && !categoryProvider.isLoading
+                        ? Colors.red
+                        : null,
+                  ),
                 ),
                 items: categories.map<DropdownMenuItem<String>>((category) {
                   return DropdownMenuItem<String>(
@@ -175,7 +186,9 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                     child: Text(category.name),
                   );
                 }).toList(),
-                onChanged: (value) => setState(() => _categoryId = value),
+                onChanged: categories.isEmpty
+                    ? null
+                    : (value) => setState(() => _categoryId = value),
                 validator: (value) => value == null ? 'Select a category' : null,
               ),
               const SizedBox(height: 16),
