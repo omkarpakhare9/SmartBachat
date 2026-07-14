@@ -12,6 +12,38 @@ const generateToken = (id) => {
   });
 };
 
+const DEFAULT_CATEGORIES = [
+  { name: 'Salary', type: 'income', color: '#10B981', icon: 'briefcase' },
+  { name: 'Freelance', type: 'income', color: '#3B82F6', icon: 'laptop' },
+  { name: 'Investments', type: 'income', color: '#8B5CF6', icon: 'trending-up' },
+  { name: 'Other Income', type: 'income', color: '#F59E0B', icon: 'plus-circle' },
+  { name: 'Food & Dining', type: 'expense', color: '#EF4444', icon: 'utensils' },
+  { name: 'Transportation', type: 'expense', color: '#F97316', icon: 'car' },
+  { name: 'Shopping', type: 'expense', color: '#EC4899', icon: 'shopping-bag' },
+  { name: 'Entertainment', type: 'expense', color: '#8B5CF6', icon: 'film' },
+  { name: 'Bills & Utilities', type: 'expense', color: '#06B6D4', icon: 'file-text' },
+  { name: 'Healthcare', type: 'expense', color: '#14B8A6', icon: 'heart' },
+  { name: 'Education', type: 'expense', color: '#6366F1', icon: 'book' },
+  { name: 'Other Expenses', type: 'expense', color: '#6B7280', icon: 'minus-circle' }
+];
+
+// Idempotent — seeds only if the user has zero categories.
+// Called from register (new users) and login (backfills existing users
+// who registered before category seeding was wired up).
+async function ensureDefaultCategories(userId) {
+  try {
+    const existing = await Category.findByUser(userId);
+    if (existing.length > 0) return;
+    await Promise.all(
+      DEFAULT_CATEGORIES.map(cat =>
+        Category.create({ ...cat, user_id: userId, is_default: true })
+      )
+    );
+  } catch (err) {
+    console.error(`Failed to seed default categories for user ${userId}:`, err);
+  }
+}
+
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
@@ -28,7 +60,6 @@ router.post('/register', [
 
     const { name, email, password } = req.body;
 
-    // Check if user exists
     const userExists = await User.findByEmail(email);
     if (userExists) {
       return res.status(400).json({
@@ -37,32 +68,8 @@ router.post('/register', [
       });
     }
 
-    // Create user
     const user = await User.create({ name, email, password });
-
-    // Create default categories for the user
-    const defaultIncomeCategories = [
-      { name: 'Salary', type: 'income', user_id: user.id, color: '#10B981', icon: 'briefcase', is_default: true },
-      { name: 'Freelance', type: 'income', user_id: user.id, color: '#3B82F6', icon: 'laptop', is_default: true },
-      { name: 'Investments', type: 'income', user_id: user.id, color: '#8B5CF6', icon: 'trending-up', is_default: true },
-      { name: 'Other Income', type: 'income', user_id: user.id, color: '#F59E0B', icon: 'plus-circle', is_default: true }
-    ];
-
-    const defaultExpenseCategories = [
-      { name: 'Food & Dining', type: 'expense', user_id: user.id, color: '#EF4444', icon: 'utensils', is_default: true },
-      { name: 'Transportation', type: 'expense', user_id: user.id, color: '#F97316', icon: 'car', is_default: true },
-      { name: 'Shopping', type: 'expense', user_id: user.id, color: '#EC4899', icon: 'shopping-bag', is_default: true },
-      { name: 'Entertainment', type: 'expense', user_id: user.id, color: '#8B5CF6', icon: 'film', is_default: true },
-      { name: 'Bills & Utilities', type: 'expense', user_id: user.id, color: '#06B6D4', icon: 'file-text', is_default: true },
-      { name: 'Healthcare', type: 'expense', user_id: user.id, color: '#14B8A6', icon: 'heart', is_default: true },
-      { name: 'Education', type: 'expense', user_id: user.id, color: '#6366F1', icon: 'book', is_default: true },
-      { name: 'Other Expenses', type: 'expense', user_id: user.id, color: '#6B7280', icon: 'minus-circle', is_default: true }
-    ];
-
-    await Promise.all([
-      ...defaultIncomeCategories.map(cat => Category.create(cat)),
-      ...defaultExpenseCategories.map(cat => Category.create(cat))
-    ]);
+    await ensureDefaultCategories(user.id);
 
     res.status(201).json({
       success: true,
@@ -98,7 +105,6 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Check if user exists
     const user = await User.findByEmail(email);
     if (!user) {
       return res.status(401).json({
@@ -107,7 +113,6 @@ router.post('/login', [
       });
     }
 
-    // Check password
     const isMatch = User.matchPassword(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
@@ -115,6 +120,9 @@ router.post('/login', [
         message: 'Invalid credentials'
       });
     }
+
+    // Backfill for accounts registered before seeding was in place.
+    await ensureDefaultCategories(user.id);
 
     res.json({
       success: true,
@@ -141,6 +149,9 @@ router.post('/login', [
 router.get('/me', require('../middleware/auth').protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+    // Also backfill here so a stale-token session with a categoryless
+    // account can recover without logging out.
+    await ensureDefaultCategories(req.user.id);
     res.json({
       success: true,
       user: {

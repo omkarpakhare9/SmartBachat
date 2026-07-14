@@ -98,9 +98,21 @@ class _CreateSplitScreenState extends State<CreateSplitScreen> {
             children: [
               DropdownButtonFormField<String>(
                 value: _selectedTransactionId,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Transaction',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  helperText: transactionProvider.isLoading
+                      ? 'Loading transactions...'
+                      : (transactionProvider.transactions.isEmpty
+                          ? (transactionProvider.error ??
+                              'No expense transactions yet. Add one from the Transactions tab first.')
+                          : null),
+                  helperStyle: TextStyle(
+                    color: transactionProvider.transactions.isEmpty &&
+                            !transactionProvider.isLoading
+                        ? Colors.red
+                        : null,
+                  ),
                 ),
                 items: transactionProvider.transactions
                     .map((transaction) => DropdownMenuItem(
@@ -108,7 +120,9 @@ class _CreateSplitScreenState extends State<CreateSplitScreen> {
                           child: Text('${transaction.description} - ₹ ${transaction.amount.toStringAsFixed(2)}'),
                         ))
                     .toList(),
-                onChanged: (value) => setState(() => _selectedTransactionId = value),
+                onChanged: transactionProvider.transactions.isEmpty
+                    ? null
+                    : (value) => setState(() => _selectedTransactionId = value),
                 validator: (value) => value == null ? 'Select a transaction' : null,
               ),
               const SizedBox(height: 16),
